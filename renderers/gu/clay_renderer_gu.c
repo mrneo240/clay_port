@@ -456,6 +456,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_IMAGE: {
+        //@Todo: Add Image rendering support
         /*
         Texture2D imageTexture = *(Texture2D
        *)renderCommand->config.imageElementConfig->imageData; DrawTextureEx(

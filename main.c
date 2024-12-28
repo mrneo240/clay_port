@@ -1,13 +1,27 @@
-#define CLAY_IMPLEMENTATION
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+// External Libraries
+#define ZROA_NO_SHORT_NAMES
+#include "libzro/libzro.h"
+#define BHASH_IMPLEMENTATION
+#define BHASH_REALLOC(ptr, size, ctx) _zroa_arena_realloc(ptr, size, size, ctx)
+#include "bullno1/bhash.h"
+#include "k-hash/khash.h"
+
+#define INIT_KEY_HASH(x)       \
+  do {                         \
+    x = khash32((uint32_t)&x); \
+  } while (0)
+
+// Clay
+#define CLAY_IMPLEMENTATION
 #include "clay.h"
 #include "clay_renderer.h"
 
 #if defined(PSP)
-#define iconSize (64)
+#define iconSize (96)
 #else
 #define iconSize (128)
 #endif
@@ -39,8 +53,26 @@ const Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
 #endif
 
 int numGames = 12;
-char** gameText;
-Clay_String* gameTextStrings;
+char **gameText;
+Clay_String *gameTextStrings;
+
+typedef struct {
+  union {
+    unsigned int ui32;
+    int i32;
+    float f32;
+  } value
+} ui_state_poly;
+
+// Test of trying to do buffered state
+typedef BHASH_TABLE(uint32_t, ui_state_poly) ui_state_buffer;
+typedef struct {
+  ui_state_buffer state_buffer_a, state_buffer_b;
+  ui_state_buffer *current_state_buffer, *previous_state_buffer;
+  zroa_arena_t state_arena_a, state_arena_b;
+} ui_state_ctx;
+
+ui_state_ctx local_ui_ctx = {0};
 
 void RenderHeaderButton(Clay_String text, bool active) {
   if (active) {
@@ -83,16 +115,28 @@ void RenderGameOption(Clay_String text, bool active, Clay_Color color) {
   }
 }
 
-float mouseWheelX = 0.f;
-float mouseWheelY = 0.f;
-int scrollDown = true;
-int numFrames = 0;
-int topMenuOptionSelected = 0;
-int leftMenuSelected = 0;
-int gameOptionSelected = 0;
-int gameSelected = 3;
+static float mouseWheelX = 0.f;
+static float mouseWheelY = 0.f;
+static int scrollDown = true;
+static int numFrames = 0;
+// static int topMenuOptionSelected = 0;
+static int leftMenuSelected = 0;
+static int gameOptionSelected = 0;
+// static int gameSelected = 3;
+
+static uint32_t ui_key_topMenuOptionSelected = 0;
+static uint32_t ui_key_gameSelected = 0;
+
+static void SwapUIBuffers(void) {
+  ui_state_buffer *tmp = local_ui_ctx.current_state_buffer;
+  local_ui_ctx.current_state_buffer = local_ui_ctx.previous_state_buffer;
+  local_ui_ctx.previous_state_buffer = tmp;
+  bhash_clear(local_ui_ctx.current_state_buffer);
+}
 
 Clay_RenderCommandArray CreateLayout() {
+  SwapUIBuffers();
+
   if (numFrames % 300 == 0) {
     scrollDown = !scrollDown;
     if (scrollDown) {
@@ -102,11 +146,29 @@ Clay_RenderCommandArray CreateLayout() {
     }
   }
 
-  if (numFrames % 60 == 0) {
-    topMenuOptionSelected++;
-    if (topMenuOptionSelected >= 5) {
-      topMenuOptionSelected = 0;
+  // Update top menu animation
+  int topMenuOptionSelected = 0;
+  {
+    bhash_index_t index = bhash_find(local_ui_ctx.previous_state_buffer,
+                                     ui_key_topMenuOptionSelected);
+    ui_state_poly poly_topMenuOptionsSelected;
+    if (bhash_is_valid(index)) {
+      poly_topMenuOptionsSelected =
+          local_ui_ctx.previous_state_buffer->values[index];
+    } else {
+      poly_topMenuOptionsSelected.value.i32 = 0;
     }
+
+    topMenuOptionSelected = poly_topMenuOptionsSelected.value.i32;
+    if (numFrames % 60 == 0) {
+      topMenuOptionSelected++;
+      if (topMenuOptionSelected >= 5) {
+        topMenuOptionSelected = 0;
+      }
+    }
+    poly_topMenuOptionsSelected.value.i32 = topMenuOptionSelected;
+    bhash_put(local_ui_ctx.current_state_buffer, ui_key_topMenuOptionSelected,
+              poly_topMenuOptionsSelected);
   }
 
   if (numFrames % 60 == 0) {
@@ -123,11 +185,28 @@ Clay_RenderCommandArray CreateLayout() {
     }
   }
 
-  if (numFrames % 300 == 0) {
-    gameSelected++;
-    if (gameSelected >= 8) {
-      gameSelected = 0;
+  // Update selected game animation
+  int gameSelected = 0;
+  {
+    bhash_index_t index =
+        bhash_find(local_ui_ctx.previous_state_buffer, ui_key_gameSelected);
+    ui_state_poly poly_gameSelected;
+    if (bhash_is_valid(index)) {
+      poly_gameSelected = local_ui_ctx.previous_state_buffer->values[index];
+    } else {
+      poly_gameSelected.value.i32 = 0;
     }
+
+    gameSelected = poly_gameSelected.value.i32;
+    if (numFrames % 300 == 0) {
+      gameSelected++;
+      if (gameSelected >= 8) {
+        gameSelected = 0;
+      }
+    }
+    poly_gameSelected.value.i32 = gameSelected;
+    bhash_put(local_ui_ctx.current_state_buffer, ui_key_gameSelected,
+              poly_gameSelected);
   }
 
   numFrames++;
@@ -383,7 +462,8 @@ Clay_RenderCommandArray CreateLayout() {
                             .color = Clay_PointerOver(Clay__HashString(
                                          CLAY_STRING("ScrollBar"), 0, 0))
                                          ? (Clay_Color){100, 100, 140, 150}
-                                         : (Clay_Color){120, 120, 160, 150}})) {
+                                         : (Clay_Color){120, 120, 160, 150}}))
+  {
         }
       }
     }
@@ -443,8 +523,8 @@ void HandleClayErrors(Clay_ErrorData errorData) {
     // Clay_SetMaxElementCount(Clay__maxElementCount * 2);
   } else if (errorData.errorType ==
              CLAY_ERROR_TYPE_TEXT_MEASUREMENT_CAPACITY_EXCEEDED) {
-    // Clay_SetMaxMeasureTextCacheWordCount(Clay__maxMeasureTextCacheWordCount *
-    // 2);
+    // Clay_SetMaxMeasureTextCacheWordCount(Clay__maxMeasureTextCacheWordCount
+    // * 2);
   }
 }
 
@@ -468,16 +548,40 @@ int main(void) {
   Clay_Renderer_Initialize(screenWidth, screenHeight,
                            "Clay - GLFW (Legacy) Renderer Example");
 
-  gameText = (char**)malloc(numGames * sizeof(char*));
-  gameTextStrings = (Clay_String*)malloc(numGames * sizeof(Clay_String));
+  gameText = (char **)malloc(numGames * sizeof(char *));
+  gameTextStrings = (Clay_String *)malloc(numGames * sizeof(Clay_String));
 
   for (int i = 0; i < numGames; i++) {
-    gameText[i] = (char*)malloc((12 + 1) * sizeof(char));
+    gameText[i] = (char *)malloc((12 + 1) * sizeof(char));
     snprintf(gameText[i], 12, "Game %2d", i);
 
     gameTextStrings[i] =
         (Clay_String){.length = (int)strlen(gameText[i]), .chars = gameText[i]};
   }
+
+  // Based on the idea from:
+  // https://gist.github.com/bullno1/2c7ade6e2112950229c5cb2f88695671
+  // and shown
+  // https://github.com/bullno1/my-first-story/blob/a11bad208a2d98a4b10ad8bc6db2bfaf851ee4f8/bgame/src/ui.c
+  const size_t arena_size = 1024;
+  local_ui_ctx.state_arena_a = zroa_arena_init(malloc(arena_size), arena_size);
+  local_ui_ctx.state_arena_b = zroa_arena_init(malloc(arena_size), arena_size);
+
+  bhash_config_t config_a = bhash_config_default();
+  config_a.memctx = &local_ui_ctx.state_arena_a;
+  bhash_config_t config_b = bhash_config_default();
+  config_b.memctx = &local_ui_ctx.state_arena_b;
+
+  bhash_reinit(&local_ui_ctx.state_buffer_a, config_a);
+  bhash_reinit(&local_ui_ctx.state_buffer_b, config_b);
+  bhash_clear(&local_ui_ctx.state_buffer_a);
+  bhash_clear(&local_ui_ctx.state_buffer_b);
+  local_ui_ctx.current_state_buffer = &local_ui_ctx.state_buffer_a;
+  local_ui_ctx.previous_state_buffer = &local_ui_ctx.state_buffer_b;
+
+  /* Setup hashes */
+  INIT_KEY_HASH(ui_key_topMenuOptionSelected);
+  INIT_KEY_HASH(ui_key_gameSelected);
 
   //--------------------------------------------------------------------------------------
   /* Loop until the user closes the window */
@@ -485,6 +589,8 @@ int main(void) {
     UpdateDrawFrame();
   }
 
+  free(local_ui_ctx.state_arena_a.base);
+  free(local_ui_ctx.state_arena_b.base);
   Clay_Renderer_Shutdown();
 
   return 0;

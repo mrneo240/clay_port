@@ -10,8 +10,8 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action,
     glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
-void Clay_Platform_Initialize(int width, int height,
-                              const char* title) { /* Initialize the library */
+void Clay_Platform_Initialize(int width, int height, const char* title) {
+  /* Initialize the library */
   if (!glfwInit()) return;
 
   /* Create a windowed mode window and its OpenGL context */

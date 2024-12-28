@@ -18,8 +18,12 @@ opt_platform = get_option('platform')
 
 inc_base = []
 inc_base += include_directories('clay')
+inc_base += include_directories('external')
 
-src_files = ['main.c']
+src_files = []
+src_files += ['main.c']
+# headers but...
+src_files += ['external/libzro/libzro.h']
 
 # Determine Platform
 platform_dep = []
@@ -60,6 +64,7 @@ platform_inc = include_directories('platforms/psp/')
 elif opt_platform == 'dc'
 
 arg_code += ['-DPLATFORM_DC', '-DNDEBUG']
+arg_code += ['-DPATH_ASSETS="/cd/"', '-DPATH_USERDATA="/pc/"']
 arg_base += ['-mpretend-cmove','-fsingle-precision-constant', '-ffast-math', '-O2', '-g0',
                '-fomit-frame-pointer', '-finline-functions',  '-mfsrra', '-mfsca']
 opt_renderer = 'gl_legacy'

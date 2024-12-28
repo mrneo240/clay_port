@@ -8,6 +8,10 @@
 #include "clay_platform.h"
 #include "clay_renderer.h"
 
+#ifndef PATH_ASSETS
+#define PATH_ASSETS ""
+#endif
+
 static int _clay_screenHeight = 0;
 static int _clay_screenWidth = 0;
 
@@ -341,8 +345,8 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
 
-void DrawRing(Clay_Vector2 center, double innerRadius, double outerRadius,
-              double startAngle, double endAngle, int segments,
+void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
+              float startAngle, float endAngle, int segments,
               clay_rgba_t color) {
   float radius = outerRadius;
   // Calculate number of segments to use for the corners
@@ -419,7 +423,7 @@ void Clay_Renderer_Initialize(int width, int height, const char* title) {
   intraFontInit();
   /* Dreamcast recommended to use INTRAFONT_CACHE_ASCII as an option but not
    * required */
-  font = intraFontLoad("ltn8.pgf", INTRAFONT_CACHE_ASCII);
+  font = intraFontLoad(PATH_ASSETS "ltn8.pgf", INTRAFONT_CACHE_ASCII);
   if (!font) {
     return;
   }
@@ -491,6 +495,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_IMAGE: {
+          //@Todo: Add Image rendering support
         /*
             Texture2D imageTexture = *(Texture2D
            *)renderCommand->config.imageElementConfig->imageData; DrawTextureEx(
