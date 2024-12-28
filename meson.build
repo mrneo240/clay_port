@@ -120,13 +120,22 @@ exe2 = executable('raylib_example',
 # Dreamcast
 if opt_platform == 'dc'
 dc_binary = '1ST_READ.BIN'
+dc_cdi = 'clay.cdi'
 
-script_path = join_paths(meson.current_source_dir(), 'pkg_dreamcast.sh')
+bin_script_path = join_paths(meson.current_source_dir(), 'pkg_dreamcast.sh')
 custom_target(dc_binary,
   depends: exe,
   input : exe,
-  output : 'fake',
-  command : [script_path, '@INPUT@', '@OUTPUT@'],
+  output : dc_binary,
+  command : [bin_script_path, '@INPUT@', '@OUTPUT@'],
+  build_by_default : true)
+
+cdi_script_path = join_paths(meson.current_source_dir(), 'pkg_dreamcast_cdi.sh')
+custom_target(dc_cdi,
+  depends: exe,
+  input : exe,
+  output : dc_cdi,
+  command : [cdi_script_path, '@INPUT@', '@OUTPUT@'],
   build_by_default : true)
 
 # Psp
