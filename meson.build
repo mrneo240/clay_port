@@ -38,13 +38,17 @@ elif opt_platform == 'psp'
 
 # we just need this i guess
 
-arg_code += ['-DPLATFORM_PSP', '-DDEBUG']
+arg_code += ['-DPLATFORM_PSP']
 arg_code += ['-DPATH_ASSETS=disc0:/PSP_GAME/USRDIR/', '-DPATH_USERDATA=ms0:/']
-arg_base += ['-fsingle-precision-constant', '-ffast-math', '-O2',  '-fexpensive-optimizations', '-fomit-frame-pointer', '-finline-functions']
+arg_base += ['-fsingle-precision-constant', '-ffast-math',  '-fexpensive-optimizations', '-fomit-frame-pointer', '-finline-functions', '-Wdouble-promotion']
 
 arg_linker += [ '-Wl,--end-group', '-lpspgu', '-lpspgum', '-lpspdebug', '-lpspvfpu', '-lpspctrl', '-lpspge', '-lpspdisplay', '-lm', '-lpspsdk', '-lpsprtc', '-lpspaudio', '-lpsppower', '-Wl,--start-group', '-lc' ]
 
-pspsdk_dep = declare_dependency(link_args :  ['-g3', '-Wl,-Map=output.map'],
+pspsdk_link_args = []
+if get_option('buildtype') == 'debug'
+  pspsdk_link_args = ['-g3', '-Wl,-Map=output.map']
+endif
+pspsdk_dep = declare_dependency(compile_args: [], link_args : pspsdk_link_args,
                               include_directories : ['/usr/local/pspdev/psp/sdk/include'] )
 platform_dep += [ pspsdk_dep ]
 
@@ -60,7 +64,7 @@ arg_base += ['-mpretend-cmove','-fsingle-precision-constant', '-ffast-math', '-O
                '-fomit-frame-pointer', '-finline-functions',  '-mfsrra', '-mfsca']
 opt_renderer = 'gl_legacy'
 
-dc_debug_dep = declare_dependency(link_args :  ['-g3', '-Wl,-Map=output.map'])
+dc_debug_dep = declare_dependency(compile_args: [], link_args :  ['-g3', '-Wl,-Map=output.map'])
 libgldc_dep = dependency('gldc', fallback : ['gldc', 'libgldc_dep'])
 platform_dep += [libgldc_dep, dc_debug_dep]
 

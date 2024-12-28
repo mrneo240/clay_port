@@ -71,11 +71,11 @@ void Clay_Platform_Initialize(int width, int height, const char *title) {
   sceGuDepthRange(65535, 0);
   sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
   sceGuEnable(GU_SCISSOR_TEST);
-  // sceGuDepthFunc(GU_GEQUAL);
+  sceGuDepthFunc(GU_GEQUAL);
   sceGuEnable(GU_DEPTH_TEST);
   sceGuFrontFace(GU_CW);
-  // sceGuShadeModel(GU_SMOOTH);
-  // sceGuEnable(GU_CULL_FACE);
+  sceGuShadeModel(GU_SMOOTH);
+  sceGuEnable(GU_CULL_FACE);
   sceGuEnable(GU_CLIP_PLANES);
   sceGuEnable(GU_BLEND);
   sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
@@ -88,6 +88,7 @@ void Clay_Platform_Initialize(int width, int height, const char *title) {
 
 void Clay_Platform_Render_Start() {
   sceGuStart(GU_DIRECT, list);
+  sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
   sceGumMatrixMode(GU_PROJECTION);
   sceGumLoadIdentity();
@@ -115,3 +116,5 @@ void Clay_Platform_Render_End() {
 }
 
 bool Clay_Platform_ShouldClose() { return running == 0; }
+
+void Clay_Platform_Shutdown() {}

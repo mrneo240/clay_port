@@ -89,18 +89,26 @@ typedef struct {
 void DrawRectangle(int posX, int posY, int width, int height,
                    clay_rgba_t color) {
   clay_vertex_t vertices[] = {
-      (clay_vertex_t){.pos = {.x = posX, .y = posY, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)},
-      (clay_vertex_t){.pos = {.x = posX + width, .y = posY, .z = 0},
-                      .uv = {.x = 1, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)},
-      (clay_vertex_t){.pos = {.x = posX, .y = posY + height, .z = 0},
-                      .uv = {.x = 0, .y = 1},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)},
-      (clay_vertex_t){.pos = {.x = posX + width, .y = posY + height, .z = 0},
-                      .uv = {.x = 1, .y = 1},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)}};
+      (clay_vertex_t){
+          .pos = {.x = posX, .y = posY, .z = 0},
+          .uv = {.x = 0, .y = 0},
+          .color = color,
+      },
+      (clay_vertex_t){
+          .pos = {.x = posX + width, .y = posY, .z = 0},
+          .uv = {.x = 1, .y = 0},
+          .color = color,
+      },
+      (clay_vertex_t){
+          .pos = {.x = posX, .y = posY + height, .z = 0},
+          .uv = {.x = 0, .y = 1},
+          .color = color,
+      },
+      (clay_vertex_t){
+          .pos = {.x = posX + width, .y = posY + height, .z = 0},
+          .uv = {.x = 1, .y = 1},
+          .color = color,
+      }};
 
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
@@ -165,7 +173,7 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   const float angles[4] = {180.0f, 270.0f, 0.0f, 90.0f};
 
   // Allocate memory for vertices (adjust size as needed)
-  static clay_vertex_t vertices[1000];  // Adjust size based on segments
+  static clay_vertex_t vertices[141];  // Adjust size based on segments
   int vertexIndex = 0;
 
   for (int corner = 0; corner < 4; corner++) {  // corner 4
@@ -183,116 +191,137 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
       float centerY = centers[corner].y;
 
       // Calculate vertex coordinates
-      vertices[vertexIndex++] =
-          (clay_vertex_t){.pos = {.x = centerX + radius * cos(radians),
-                                  .y = centerY + radius * sin(radians),
-                                  .z = 0},
-                          .uv = {.x = 0, .y = 0},
-                          .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
-      vertices[vertexIndex++] =
-          (clay_vertex_t){.pos = {.x = centerX + radius * cos(radiansNext),
-                                  .y = centerY + radius * sin(radiansNext),
-                                  .z = 0},
-                          .uv = {.x = 0, .y = 0},
-                          .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
-      vertices[vertexIndex++] =
-          (clay_vertex_t){.pos = {.x = centerX, .y = centerY, .z = 0},
-                          .uv = {.x = 0, .y = 0},
-                          .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+      vertices[vertexIndex++] = (clay_vertex_t){
+          .pos = {.x = centerX + radius * cos(radians),
+                  .y = centerY + radius * sin(radians),
+                  .z = 0},
+          .uv = {.x = 0, .y = 0},
+          .color = color,
+      };
+      vertices[vertexIndex++] = (clay_vertex_t){
+          .pos = {.x = centerX + radius * cos(radiansNext),
+                  .y = centerY + radius * sin(radiansNext),
+                  .z = 0},
+          .uv = {.x = 0, .y = 0},
+          .color = color,
+      };
+      vertices[vertexIndex++] = (clay_vertex_t){
+          .pos = {.x = centerX, .y = centerY, .z = 0},
+          .uv = {.x = 0, .y = 0},
+          .color = color,
+      };
     }
   }
 
   // Rectangles
   // top
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[0].x, .y = point[0].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[0].x, .y = point[0].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[1].x, .y = point[1].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[1].x, .y = point[1].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[8].x, .y = point[8].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[8].x, .y = point[8].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[8].x, .y = point[8].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[8].x, .y = point[8].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[1].x, .y = point[1].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[1].x, .y = point[1].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[9].x, .y = point[9].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[9].x, .y = point[9].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
   // middle
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[7].x, .y = point[7].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[7].x, .y = point[7].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[2].x, .y = point[2].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[2].x, .y = point[2].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[6].x, .y = point[6].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[6].x, .y = point[6].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[6].x, .y = point[6].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[6].x, .y = point[6].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[2].x, .y = point[2].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[2].x, .y = point[2].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[3].x, .y = point[3].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[3].x, .y = point[3].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
   // bottom
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[11].x, .y = point[11].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[11].x, .y = point[11].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[10].x, .y = point[10].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[10].x, .y = point[10].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[5].x, .y = point[5].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[5].x, .y = point[5].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[5].x, .y = point[5].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[5].x, .y = point[5].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[10].x, .y = point[10].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[10].x, .y = point[10].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[4].x, .y = point[4].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+  vertices[vertexIndex++] = (clay_vertex_t){
+      .pos = {.x = point[4].x, .y = point[4].y, .z = 0},
+      .uv = {.x = 0, .y = 0},
+      .color = color,
+  };
 
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
@@ -345,22 +374,25 @@ void DrawRing(Clay_Vector2 center, double innerRadius, double outerRadius,
     float centerY = center.y;
 
     // Calculate vertex coordinates
-    vertices[vertexIndex++] =
-        (clay_vertex_t){.pos = {.x = centerX + radius * cos(radians),
-                                .y = centerY + radius * sin(radians),
-                                .z = 0},
-                        .uv = {.x = 0, .y = 0},
-                        .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
-    vertices[vertexIndex++] =
-        (clay_vertex_t){.pos = {.x = centerX + radius * cos(radiansNext),
-                                .y = centerY + radius * sin(radiansNext),
-                                .z = 0},
-                        .uv = {.x = 0, .y = 0},
-                        .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
-    vertices[vertexIndex++] =
-        (clay_vertex_t){.pos = {.x = centerX, .y = centerY, .z = 0},
-                        .uv = {.x = 0, .y = 0},
-                        .color = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)};
+    vertices[vertexIndex++] = (clay_vertex_t){
+        .pos = {.x = centerX + radius * cos(radians),
+                .y = centerY + radius * sin(radians),
+                .z = 0},
+        .uv = {.x = 0, .y = 0},
+        .color = color,
+    };
+    vertices[vertexIndex++] = (clay_vertex_t){
+        .pos = {.x = centerX + radius * cos(radiansNext),
+                .y = centerY + radius * sin(radiansNext),
+                .z = 0},
+        .uv = {.x = 0, .y = 0},
+        .color = color,
+    };
+    vertices[vertexIndex++] = (clay_vertex_t){
+        .pos = {.x = centerX, .y = centerY, .z = 0},
+        .uv = {.x = 0, .y = 0},
+        .color = color,
+    };
   }
 
   glEnableClientState(GL_VERTEX_ARRAY);
