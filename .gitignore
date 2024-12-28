@@ -1,3 +1,5 @@
 build
 meson.build.user
 resources/*.pgf
+subprojects/gldc
+subprojects/libintrafont

@@ -142,8 +142,10 @@ void DrawRectangle(int posX, int posY, int width, int height,
 void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
                      int segments, clay_rgba_t color) {
   if (cornerRadius >= 1.f) cornerRadius = 1.f;
-  // hardcode segments to 8, screen is tiny ya know?
-  segments = 8;
+
+  // hardcode segments to small number, screen is tiny ya know?
+  segments = 6;
+
   // harcoded for now
   clay_color_vertex_t* vertices =
       (clay_color_vertex_t*)sceGuGetMemory(114 * sizeof(clay_color_vertex_t));
@@ -154,7 +156,7 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   float radius = (rec.width > rec.height) ? (rec.height * cornerRadius) / 2.f
                                           : (rec.width * cornerRadius) / 2.f;
   if (radius <= 0.f) return;
-  /*
+#if 0
     // Calculate number of segments to use for the corners
     if (segments < 4) {
       // Calculate the maximum angle between segments based on the error rate
@@ -164,7 +166,7 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
       segments = (int)(ceilf(2.f * PI / th) / 4.f);
       if (segments <= 0) segments = 4;
     }
-  */
+#endif
 
   float stepLength = 90.0f / (float)segments;
 
@@ -188,7 +190,6 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   const clay_vec2_t centers[4] = {point[8], point[9], point[10], point[11]};
   const float angles[4] = {180.f, 270.f, 0.f, 90.f};
 
-  // Allocate memory for vertices (adjust size as needed)
   int vertexIndex = 0;
   for (int corner = 0; corner < 4; corner++) {  // corner 4
     // Center of the corner arc
@@ -205,21 +206,6 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
       float radiansNext = angleNext * PI / 180.f;
 
       // Calculate vertex coordinates
-      /*
-      vertices[vertexIndex++] = (clay_color_vertex_t){
-          .color = color,
-          .pos = {.x = centerX + radius * cos(radians),
-                  .y = centerY + radius * sin(radians),
-                  .z = 0},
-
-      };
-      vertices[vertexIndex++] = (clay_color_vertex_t){
-          .color = color,
-          .pos = {.x = centerX + radius * cos(radiansNext),
-                  .y = centerY + radius * sin(radiansNext),
-                  .z = 0},
-      };
-*/
       vertices[vertexIndex++] = (clay_color_vertex_t){
           .color = color,
           .pos = {.x = centerX + radius * cosf(radians),
@@ -339,19 +325,79 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   sceGuEnable(GU_DEPTH_TEST);
 }
 
-void DrawRing(Clay_Vector2 center, double innerRadius, double outerRadius,
-              double startAngle, double endAngle, int segments,
-              clay_rgba_t color) {}
+void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
+              float startAngle, float endAngle, int segments,
+              clay_rgba_t color) {
+  float radius = outerRadius;
+
+#if 0
+  // Calculate number of segments to use for the corners
+  if (segments < 4) {
+    // Calculate the maximum angle between segments based on the error rate
+    // (usually 0.5f)
+    float th = acosf(2 * powf(1 - SMOOTH_CIRCLE_ERROR_RATE / radius, 2) - 1);
+    segments = (int)(ceilf(2 * PI / th) / 4.0f);
+    if (segments <= 0) segments = 4;
+  }
+#endif
+  segments = 6;
+
+  float stepLength =
+      ((int)fabsf(endAngle - startAngle) % 360) / (float)segments;
+
+  // harcoded for now
+  clay_color_vertex_t* vertices =
+      (clay_color_vertex_t*)sceGuGetMemory(114 * sizeof(clay_color_vertex_t));
+
+  int vertexIndex = 0;
+  //  Center of the corner arc
+  const float centerX = center.x;
+  const float centerY = center.y;
+
+  // Generate vertices for each segment of the corner
+  for (int i = 0; i < segments; i++) {
+    float angle = startAngle + i * stepLength;  // Convert degrees to radians
+    float radians = angle * PI / 180.f;
+    float angleNext =
+        startAngle + (i + 1) * stepLength;  // Convert degrees to radians
+    float radiansNext = angleNext * PI / 180.f;
+
+    // Calculate vertex coordinates
+    vertices[vertexIndex++] = (clay_color_vertex_t){
+        .color = color,
+        .pos = {.x = centerX + radius * cosf(radians),
+                .y = centerY + radius * sinf(radians),
+                .z = 0},
+
+    };
+    vertices[vertexIndex++] = (clay_color_vertex_t){
+        .color = color,
+        .pos = {.x = centerX + radius * cosf(radiansNext),
+                .y = centerY + radius * sinf(radiansNext),
+                .z = 0},
+    };
+    vertices[vertexIndex++] = (clay_color_vertex_t){
+        .color = color,
+        .pos = {.x = centerX, .y = centerY, .z = 0},
+    };
+  }
+
+  sceGuDisable(GU_DEPTH_TEST);
+  sceGuDrawArray(GU_TRIANGLES,
+                 GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D,
+                 vertexIndex, 0, vertices);
+  sceGuEnable(GU_DEPTH_TEST);
+}
 
 void Clay_Renderer_Initialize(int width, int height, const char* title) {
-  // if (width > 480) {
-  //   float widthScale = 480.f / width;
-  //   width = 480;
-  // }
-  // if (height > 272) {
-  //   float heightScale = 480.f / height;
-  //   height = 272;
-  // }
+  if (width > 480) {
+    // float widthScale = 480.f / width;
+    width = 480;
+  }
+  if (height > 272) {
+    // float heightScale = 480.f / height;
+    height = 272;
+  }
 
   Clay_Platform_Initialize(width, height, title);
 

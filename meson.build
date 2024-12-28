@@ -129,12 +129,22 @@ elif opt_platform == 'psp'
 psp_binary = 'EBOOT.PBP'
 
 script_path = join_paths(meson.current_source_dir(), 'pkg_psp.sh')
+
 custom_target(psp_binary,
   depends: exe,
   input : exe,
-  output : 'fake',
+  output : psp_binary,
   command : [script_path, '@INPUT@', '@OUTPUT@'],
   build_by_default : true)
+
+if false
+  custom_target('RAYLIB.PBP',
+    depends: exe2,
+    input : exe2,
+    output : 'RAYLIB.PBP',
+    command : [script_path, '@INPUT@', '@OUTPUT@'],
+    build_by_default : true)
+  endif
 endif
 
 #fs = import('fs')
