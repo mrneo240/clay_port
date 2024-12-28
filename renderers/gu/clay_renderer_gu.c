@@ -41,10 +41,24 @@ typedef struct {
 } clay_vec3_t;
 
 typedef struct {
+  int16_t x, y, z;
+} clay_vec3_16_t;
+
+typedef struct {
   clay_vec2_t uv;
   clay_rgba_t color;
   clay_vec3_t pos;
-} clay_vertex_t;
+} clay_vertex_t __attribute__((packed));
+
+typedef struct {
+  clay_rgba_t color;
+  clay_vec3_t pos;
+} clay_color_vertex_t __attribute__((packed));
+
+typedef struct {
+  uint16_t color;
+  clay_vec3_16_t pos;
+} clay_color_vertex_16_t __attribute__((packed));
 
 typedef struct {
   clay_vertex_t vertices[3];
@@ -73,79 +87,84 @@ typedef struct {
     .b = (unsigned char)roundf(color.b), .a = (unsigned char)roundf(color.a)  \
   }
 
+#define GU_COLOR_TO_GU_COLOR_16(c)                                \
+  (uint16_t)(((c.a >> 4) & 0xF) << 12 | ((c.b >> 4) & 0xF) << 8 | \
+             ((c.g >> 4) & 0xF) << 4 | ((c.r >> 4) & 0xF))
+
+#define RGBA_TO_GU_COLOR_16(c)                                \
+  (uint16_t)(((c >> 4) & 0xF) << 12 | ((c >> 4) & 0xF) << 8 | \
+             ((c >> 4) & 0xF) << 4 | ((c >> 4) & 0xF))
 /* ARGB */
-#define WHITE 0xFFFFFFFF
-#define CLEAR 0x00FFFFFF
-#define GRAY 0xFF7F7F7F
-#define BLACK 0xFF000000
-#define RED 0xFF0000FF
+#define WHITE (0xFFFFFFFF)
+#define CLEAR (0x00FFFFFF)
+#define GRAY (0xFF7F7F7F)
+#define BLACK (0xFF000000)
+#define RED (0xFF0000FF)
+
+/*
+static uint8_t vertMem[1024 * 1024] = {};
+static size_t vertexOffset = 0;
+void* _sceGuGetMemory(size_t size) {
+  void* ptr = vertMem + vertexOffset;
+  vertexOffset += size;
+
+  // Uncached
+  return (intptr_t)ptr | 0x40000000;
+}*/
 
 void DrawRectangle(int posX, int posY, int width, int height,
                    clay_rgba_t color) {
-  clay_vertex_t vertices[] = {
-      (clay_vertex_t){.pos = {.x = posX, .y = posY, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)},
-      (clay_vertex_t){.pos = {.x = posX + width, .y = posY, .z = 0},
-                      .uv = {.x = 1, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)},
-      (clay_vertex_t){.pos = {.x = posX, .y = posY + height, .z = 0},
-                      .uv = {.x = 0, .y = 1},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)},
-      (clay_vertex_t){.pos = {.x = posX + width, .y = posY + height, .z = 0},
-                      .uv = {.x = 1, .y = 1},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)}};
+  clay_color_vertex_16_t* vertices = (clay_color_vertex_16_t*)sceGuGetMemory(
+      2 * sizeof(clay_color_vertex_16_t));
 
-  sceGuDrawArray(
-      GU_TRIANGLES,
-      GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, 4,
-      0, vertices);
+  uint16_t c = GU_COLOR_TO_GU_COLOR_16(color);
 
-  /*
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  vertices[0] = (clay_color_vertex_16_t){.color = c,
+                                         .pos = {
+                                             .x = posX,
+                                             .y = posY,
+                                             .z = 0,
+                                         }};
 
-    clay_vertex_t* submission_pointer = &vertices[0];
-    glVertexPointer(3, GL_FLOAT, sizeof(clay_vertex_t),
-    &submission_pointer->pos); glTexCoordPointer(2, GL_FLOAT,
-    sizeof(clay_vertex_t), &submission_pointer->uv); glColorPointer(4,
-    GL_UNSIGNED_BYTE, sizeof(clay_vertex_t), &submission_pointer->color);
+  vertices[1] = (clay_color_vertex_16_t){.color = c,
+                                         .pos = {
+                                             .x = posX + width,
+                                             .y = posY + height,
+                                             .z = 0,
+                                         }};
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  */
+  sceGuDrawArray(GU_SPRITES, GU_COLOR_4444 | GU_VERTEX_16BIT | GU_TRANSFORM_2D,
+                 2, 0, vertices);
 }
 
-#define PI 3.14159265
-#define SMOOTH_CIRCLE_ERROR_RATE 0.5f
+#define PI ((float)M_PI)
+#define SMOOTH_CIRCLE_ERROR_RATE (0.5f)
 void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
                      int segments, clay_rgba_t color) {
-  if (cornerRadius >= 1.0f) cornerRadius = 1.0f;
-
+  if (cornerRadius >= 1.f) cornerRadius = 1.f;
   // hardcode segments to 8, screen is tiny ya know?
   segments = 8;
   // harcoded for now
-  clay_vertex_t* vertices = sceGuGetMemory(114 * sizeof(clay_vertex_t));
+  clay_color_vertex_t* vertices =
+      (clay_color_vertex_t*)sceGuGetMemory(114 * sizeof(clay_color_vertex_t));
 
   Rectangle rec = (Rectangle){.x = x, .y = y, .width = width, .height = height};
 
   // Calculate corner radius
-  float radius = (rec.width > rec.height) ? (rec.height * cornerRadius) / 2
-                                          : (rec.width * cornerRadius) / 2;
-  if (radius <= 0.0f) return;
-
-  // Calculate number of segments to use for the corners
-  if (segments < 4) {
-    // Calculate the maximum angle between segments based on the error rate
-    // (usually 0.5f)
-    float th = acosf(2 * powf(1 - SMOOTH_CIRCLE_ERROR_RATE / radius, 2) - 1);
-    segments = (int)(ceilf(2 * PI / th) / 4.0f);
-    if (segments <= 0) segments = 4;
-  }
+  float radius = (rec.width > rec.height) ? (rec.height * cornerRadius) / 2.f
+                                          : (rec.width * cornerRadius) / 2.f;
+  if (radius <= 0.f) return;
+  /*
+    // Calculate number of segments to use for the corners
+    if (segments < 4) {
+      // Calculate the maximum angle between segments based on the error rate
+      // (usually 0.5f)
+      float th =
+          acosf(2.f * powf(1 - SMOOTH_CIRCLE_ERROR_RATE / radius, 2.f) - 1.f);
+      segments = (int)(ceilf(2.f * PI / th) / 4.f);
+      if (segments <= 0) segments = 4;
+    }
+  */
 
   float stepLength = 90.0f / (float)segments;
 
@@ -167,161 +186,157 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   };
 
   const clay_vec2_t centers[4] = {point[8], point[9], point[10], point[11]};
-  const float angles[4] = {180.0f, 270.0f, 0.0f, 90.0f};
+  const float angles[4] = {180.f, 270.f, 0.f, 90.f};
 
   // Allocate memory for vertices (adjust size as needed)
   int vertexIndex = 0;
-
   for (int corner = 0; corner < 4; corner++) {  // corner 4
+    // Center of the corner arc
+    const float centerX = centers[corner].x;
+    const float centerY = centers[corner].y;
+
     // Generate vertices for each segment of the corner
     for (int i = 0; i < segments; i++) {
       float angle =
           angles[corner] + i * stepLength;  // Convert degrees to radians
-      float radians = angle * PI / 180.0f;
+      float radians = angle * PI / 180.f;
       float angleNext =
           angles[corner] + (i + 1) * stepLength;  // Convert degrees to radians
-      float radiansNext = angleNext * PI / 180.0f;
-
-      // Center of the corner arc
-      float centerX = centers[corner].x;
-      float centerY = centers[corner].y;
+      float radiansNext = angleNext * PI / 180.f;
 
       // Calculate vertex coordinates
-      vertices[vertexIndex++] =
-          (clay_vertex_t){.pos = {.x = centerX + radius * cos(radians),
-                                  .y = centerY + radius * sin(radians),
-                                  .z = 0},
-                          .uv = {.x = 0, .y = 0},
-                          .color = CLAY_COLOR_TO_GU_COLOR(color)};
-      vertices[vertexIndex++] =
-          (clay_vertex_t){.pos = {.x = centerX + radius * cos(radiansNext),
-                                  .y = centerY + radius * sin(radiansNext),
-                                  .z = 0},
-                          .uv = {.x = 0, .y = 0},
-                          .color = CLAY_COLOR_TO_GU_COLOR(color)};
-      vertices[vertexIndex++] =
-          (clay_vertex_t){.pos = {.x = centerX, .y = centerY, .z = 0},
-                          .uv = {.x = 0, .y = 0},
-                          .color = CLAY_COLOR_TO_GU_COLOR(color)};
+      /*
+      vertices[vertexIndex++] = (clay_color_vertex_t){
+          .color = color,
+          .pos = {.x = centerX + radius * cos(radians),
+                  .y = centerY + radius * sin(radians),
+                  .z = 0},
+
+      };
+      vertices[vertexIndex++] = (clay_color_vertex_t){
+          .color = color,
+          .pos = {.x = centerX + radius * cos(radiansNext),
+                  .y = centerY + radius * sin(radiansNext),
+                  .z = 0},
+      };
+*/
+      vertices[vertexIndex++] = (clay_color_vertex_t){
+          .color = color,
+          .pos = {.x = centerX + radius * cosf(radians),
+                  .y = centerY + radius * sinf(radians),
+                  .z = 0},
+
+      };
+      vertices[vertexIndex++] = (clay_color_vertex_t){
+          .color = color,
+          .pos = {.x = centerX + radius * cosf(radiansNext),
+                  .y = centerY + radius * sinf(radiansNext),
+                  .z = 0},
+      };
+      vertices[vertexIndex++] = (clay_color_vertex_t){
+          .color = color,
+          .pos = {.x = centerX, .y = centerY, .z = 0},
+      };
     }
   }
 
   // Rectangles
   // top
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[0].x, .y = point[0].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[0].x, .y = point[0].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[1].x, .y = point[1].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[1].x, .y = point[1].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[8].x, .y = point[8].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[8].x, .y = point[8].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[8].x, .y = point[8].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[8].x, .y = point[8].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[1].x, .y = point[1].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[1].x, .y = point[1].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[9].x, .y = point[9].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[9].x, .y = point[9].y, .z = 0},
+  };
   // middle
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[7].x, .y = point[7].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[7].x, .y = point[7].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[2].x, .y = point[2].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[2].x, .y = point[2].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[6].x, .y = point[6].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[6].x, .y = point[6].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[6].x, .y = point[6].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[6].x, .y = point[6].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[2].x, .y = point[2].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[2].x, .y = point[2].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[3].x, .y = point[3].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[3].x, .y = point[3].y, .z = 0},
+  };
   // bottom
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[11].x, .y = point[11].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[11].x, .y = point[11].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[10].x, .y = point[10].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[10].x, .y = point[10].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[5].x, .y = point[5].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[5].x, .y = point[5].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[5].x, .y = point[5].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[5].x, .y = point[5].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[10].x, .y = point[10].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[10].x, .y = point[10].y, .z = 0},
+  };
 
-  vertices[vertexIndex++] =
-      (clay_vertex_t){.pos = {.x = point[4].x, .y = point[4].y, .z = 0},
-                      .uv = {.x = 0, .y = 0},
-                      .color = CLAY_COLOR_TO_GU_COLOR(color)};
+  vertices[vertexIndex++] = (clay_color_vertex_t){
+      .color = color,
+      .pos = {.x = point[4].x, .y = point[4].y, .z = 0},
+  };
 
   sceGuDisable(GU_DEPTH_TEST);
-  sceGuDrawArray(
-      GU_TRIANGLES,
-      GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D,
-      vertexIndex, 0, vertices);
+  sceGuDrawArray(GU_TRIANGLES,
+                 GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D,
+                 vertexIndex, 0, vertices);
   sceGuEnable(GU_DEPTH_TEST);
-
-  /*
-    glEnableClient                      State(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    clay_vertex_t* submission_pointer = &vertices[0];
-    glVertexPointer(3, GL_FLOAT, sizeof(clay_vertex_t),
-    &submission_pointer->pos); glTexCoordPointer(2, GL_FLOAT,
-    sizeof(clay_vertex_t), &submission_pointer->uv); glColorPointer(4,
-    GL_UNSIGNED_BYTE, sizeof(clay_vertex_t), &submission_pointer->color);
-
-    glDrawArrays(GL_TRIANGLES, 0, vertexIndex);
-
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  */
 }
 
 void DrawRing(Clay_Vector2 center, double innerRadius, double outerRadius,
@@ -343,6 +358,7 @@ void Clay_Renderer_Initialize(int width, int height, const char* title) {
   intraFontInit();
   /* Dreamcast recommended to use INTRAFONT_CACHE_ASCII as an option but not
    * required */
+
   font = intraFontLoad("ltn8.pgf", INTRAFONT_CACHE_ASCII);
   if (!font) {
     return;
@@ -357,8 +373,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_Start();
   bool isScissorActive = false;
 
-  // sceGuEnable(GU_SCISSOR_TEST);
-  // sceGuScissor(100, 0, 140, 272);
+  // vertexOffset = 0;
 
   for (int j = 0; j < renderCommands.length; j++) {
     Clay_RenderCommand* renderCommand =
@@ -390,6 +405,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         if (isScissorActive) {
           sceGuEnable(GU_SCISSOR_TEST);
         }
+        sceGuDisable(GU_TEXTURE_2D);
 
         break;
       }
@@ -547,33 +563,26 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_End();
 }
 
-static char cloned[1024] = {{0}};
-
 Clay_Dimensions IntraFont_MeasureText(Clay_String* text,
                                       Clay_TextElementConfig* config) {
   // Measure string size for Font
   Clay_Dimensions textSize = {0};
 
-  // char* cloned = (char*)malloc(text->length + 1);
-  memcpy(cloned, text->chars, text->length);
-  cloned[text->length] = '\0';
-
   float fontSize = config->fontSize;
   float scaleSize = fontSize / 16.0f;
   font->size = scaleSize;
 
-  textDimen dimen = intraFontMeasureTextEx(font, cloned, text->length);
+  textDimen dimen = intraFontMeasureTextEx(font, text->chars, text->length);
 
   textSize.width = dimen.width;
   textSize.height = dimen.height;
   return textSize;
 }
 
-
 void Clay_Platform_Shutdown();
 void Clay_Renderer_Shutdown() {
-    intraFontUnload(font);
-    intraFontShutdown();
+  intraFontUnload(font);
+  intraFontShutdown();
 
-    Clay_Platform_Shutdown();
+  Clay_Platform_Shutdown();
 }

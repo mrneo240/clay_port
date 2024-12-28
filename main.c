@@ -6,11 +6,14 @@
 #include "clay.h"
 #include "clay_renderer.h"
 
-Clay_Sizing gameIconSizing = {.height = CLAY_SIZING_FIXED(128),
-                              .width = CLAY_SIZING_FIXED(128)};
+#if defined(PSP)
+#define iconSize (64)
+#else
+#define iconSize (128)
+#endif
 
-// Clay_Sizing gameIconSizing = {.height = CLAY_SIZING_FIXED(64),
-//                               .width = CLAY_SIZING_FIXED(64)};
+Clay_Sizing gameIconSizing = {.height = CLAY_SIZING_FIXED(iconSize),
+                              .width = CLAY_SIZING_FIXED(iconSize)};
 
 Clay_RectangleElementConfig contentBackgroundConfig = {
     .color = {90, 90, 90, 255}, .cornerRadius = {8}};
@@ -24,8 +27,16 @@ Clay_Color gameIconColors[] = {{245, 149, 178, 255} /* Mauvelous */,
 Clay_RectangleElementConfig gameIconBackgroundConfig = {
     .color = {90, 90, 90, 255}, .cornerRadius = {8}};
 
-Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
-                            .width = CLAY_SIZING_GROW()};
+// This is currently broken upstream :(
+#if defined(PSP)
+const Clay_Sizing layoutExpand = {
+    .height = (Clay_SizingAxis){.size = {0}, .type = 1},
+    .width = (Clay_SizingAxis){.size = {0}, .type = 1}};
+#else
+// This should be what we use
+const Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
+                                  .width = CLAY_SIZING_GROW()};
+#endif
 
 int numGames = 12;
 char** gameText;
@@ -218,7 +229,7 @@ Clay_RenderCommandArray CreateLayout() {
       }
 
       CLAY(CLAY_ID("MainContent"), /* layoutExpand*/
-           CLAY_LAYOUT({.sizing = {.height = CLAY_SIZING_PERCENT(0.8f),
+           CLAY_LAYOUT({.sizing = {.height = CLAY_SIZING_GROW(),
                                    .width = CLAY_SIZING_GROW()},
                         .childGap = 16,
                         .padding = {0, 16},
@@ -256,9 +267,12 @@ Clay_RenderCommandArray CreateLayout() {
                         .cornerRadius = {16}}),
                    CLAY_BORDER(border)) {
                 CLAY_TEXT(gameTextStrings[(row * numPerRow) + col],
-                          CLAY_TEXT_CONFIG({.fontId = 0,
-                                            .fontSize = 24,
-                                            .textColor = {0, 0, 0, 255}}));
+                          CLAY_TEXT_CONFIG({
+                              .textColor = {0, 0, 0, 255},
+                              .fontId = 0,
+                              .fontSize = 24,
+                          }));
+
                 if ((row * 3) + col == gameSelected) {
                   bool LaunchSelected = gameOptionSelected == 0;
                   bool CoverSelected = gameOptionSelected == 1;
@@ -268,21 +282,24 @@ Clay_RenderCommandArray CreateLayout() {
                       .parent = CLAY_ATTACH_POINT_CENTER_CENTER};
 
                   Clay_FloatingAttachPoints menuattachLeft = {
+                      .element = CLAY_ATTACH_POINT_RIGHT_TOP,
                       .parent = CLAY_ATTACH_POINT_CENTER_CENTER,
-                      .element = CLAY_ATTACH_POINT_RIGHT_TOP};
+                  };
 
                   Clay_FloatingAttachPoints attach =
                       col == 2 ? menuattachLeft : menuattachCenter;
 
                   CLAY(CLAY_ID("GameOptionMenu"),
                        CLAY_FLOATING({
-                           .attachment = attach,
                            .zIndex = 10,
+                           .attachment = attach,
                        }),
-                       CLAY_LAYOUT({.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                                    .childGap = 16,
-                                    .sizing = {.width = CLAY_SIZING_FIXED(160)},
-                                    .padding = {0, 8}}),
+                       CLAY_LAYOUT({
+                           .sizing = {.width = CLAY_SIZING_FIXED(160)},
+                           .padding = {0, 8},
+                           .childGap = 16,
+                           .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                       }),
                        CLAY_RECTANGLE(
                            {.color = {40, 40, 40, 255}, .cornerRadius = {8}})) {
                     RenderGameOption(CLAY_STRING("Launch"), LaunchSelected,
@@ -301,15 +318,20 @@ Clay_RenderCommandArray CreateLayout() {
                         CLAY_ID("GameOptionMenuCorner"),
                         CLAY_FLOATING(
                             {.attachment =
-                                 {.parent = markerAttachPoint,
-                                  .element = CLAY_ATTACH_POINT_CENTER_CENTER}}),
-                        CLAY_LAYOUT(
-                            {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                             .sizing = {.width = CLAY_SIZING_FIXED(24),
-                                        .height = CLAY_SIZING_FIXED(24)},
-                             .padding = {8, 8}}),
-                        CLAY_RECTANGLE({.cornerRadius = {32},
-                                        .color = buttonColors[1]})){};
+                                 {
+                                     .element = CLAY_ATTACH_POINT_CENTER_CENTER,
+                                     .parent = markerAttachPoint,
+                                 }}),
+                        CLAY_LAYOUT({
+                            .sizing = {.width = CLAY_SIZING_FIXED(24),
+                                       .height = CLAY_SIZING_FIXED(24)},
+                            .padding = {8, 8},
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        }),
+                        CLAY_RECTANGLE({
+                            .color = buttonColors[1],
+                            .cornerRadius = {32},
+                        })){};
                   };
                 }
               }
@@ -427,11 +449,13 @@ void HandleClayErrors(Clay_ErrorData errorData) {
 }
 
 int main(void) {
-  // const int screenWidth = 480;
-  // const int screenHeight = 272;
-
+#if defined(PSP)
+  const int screenWidth = 480;
+  const int screenHeight = 272;
+#else
   const int screenWidth = 640;
   const int screenHeight = 480;
+#endif
 
   uint64_t totalMemorySize = Clay_MinMemorySize();
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
@@ -444,15 +468,15 @@ int main(void) {
   Clay_Renderer_Initialize(screenWidth, screenHeight,
                            "Clay - GLFW (Legacy) Renderer Example");
 
-  gameText = malloc(numGames * sizeof(char*));
-  gameTextStrings = malloc(numGames * sizeof(Clay_String));
+  gameText = (char**)malloc(numGames * sizeof(char*));
+  gameTextStrings = (Clay_String*)malloc(numGames * sizeof(Clay_String));
 
   for (int i = 0; i < numGames; i++) {
-    gameText[i] = malloc((12 + 1) * sizeof(char));
+    gameText[i] = (char*)malloc((12 + 1) * sizeof(char));
     snprintf(gameText[i], 12, "Game %2d", i);
 
     gameTextStrings[i] =
-        (Clay_String){.chars = gameText[i], .length = strlen(gameText[i])};
+        (Clay_String){.length = (int)strlen(gameText[i]), .chars = gameText[i]};
   }
 
   //--------------------------------------------------------------------------------------
