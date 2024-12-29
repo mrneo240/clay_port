@@ -42,14 +42,14 @@ Clay_RectangleElementConfig gameIconBackgroundConfig = {
     .color = {90, 90, 90, 255}, .cornerRadius = {8}};
 
 // This is currently broken upstream :(
-#if defined(PSP)
-const Clay_Sizing layoutExpand = {
+#if defined(PLATFORM_PSP)
+static const Clay_Sizing layoutExpand = {
     .height = (Clay_SizingAxis){.size = {0}, .type = 1},
     .width = (Clay_SizingAxis){.size = {0}, .type = 1}};
 #else
 // This should be what we use
-const Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
-                                  .width = CLAY_SIZING_GROW()};
+static const Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
+                                         .width = CLAY_SIZING_GROW()};
 #endif
 
 int numGames = 12;
@@ -61,7 +61,7 @@ typedef struct {
     unsigned int ui32;
     int i32;
     float f32;
-  } value
+  } value;
 } ui_state_poly;
 
 // Test of trying to do buffered state
@@ -416,12 +416,9 @@ Clay_RenderCommandArray CreateLayout() {
               }
             }
           }
-        }
-
-        // End Child Elements
-      }
-      // End Child Elements
-    }
+        }  // End GameIconRow
+      }  // End MainContent
+    }  // End LowerContent
   }
 
   /*
@@ -529,7 +526,7 @@ void HandleClayErrors(Clay_ErrorData errorData) {
 }
 
 int main(void) {
-#if defined(PSP)
+#if defined(PLATFORM_PSP)
   const int screenWidth = 480;
   const int screenHeight = 272;
 #else

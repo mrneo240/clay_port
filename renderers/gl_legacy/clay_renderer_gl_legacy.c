@@ -12,6 +12,12 @@
 #define PATH_ASSETS ""
 #endif
 
+// #define EMULATE_PLATFORM_DC (1)
+#if defined(PLATFORM_DC) || defined(EMULATE_PLATFORM_DC)
+#define SOFTWARE_SCISSORING
+#endif
+// #undef SOFTWARE_SCISSORING
+
 static int _clay_screenHeight = 0;
 static int _clay_screenWidth = 0;
 
@@ -90,6 +96,190 @@ typedef struct {
 #define BLACK 0xFF000000
 #define RED 0xFF0000FF
 
+static Rectangle current_scissor_region = {0};
+static bool scissor_enabled = false;
+#if defined(SOFTWARE_SCISSORING)
+
+#define CLIP_MINX (0x1)
+#define CLIP_MAXX (0x2)
+#define CLIP_MINY (0x4)
+#define CLIP_MAXY (0x8)
+
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)                                    \
+  ((byte) & 0x80 ? '1' : '0'), ((byte) & 0x40 ? '1' : '0'),     \
+      ((byte) & 0x20 ? '1' : '0'), ((byte) & 0x10 ? '1' : '0'), \
+      ((byte) & 0x08 ? '1' : '0'), ((byte) & 0x04 ? '1' : '0'), \
+      ((byte) & 0x02 ? '1' : '0'), ((byte) & 0x01 ? '1' : '0')
+
+static clay_vertex_t _clipped_vertices[150];
+void ClipVerticesToScissor(clay_vertex_t* vertices, int num_vertices,
+                           int* out_num_vertices) {
+  if (!scissor_enabled) {
+    *out_num_vertices = num_vertices;
+    return;
+  }
+
+  const int clip_x_min = current_scissor_region.x;
+  const int clip_x_max =
+      current_scissor_region.x + current_scissor_region.width;
+
+  const int clip_y_min = current_scissor_region.y;
+  const int clip_y_max =
+      current_scissor_region.y + current_scissor_region.height;
+
+  bool needed_clipping = false;
+  int vertices_out = 0;
+
+  for (int i = 0; i < num_vertices / 3; i++) {
+    clay_vertex_t* vertex_0 = &vertices[(i * 3) + 0];
+    uint8_t clip_bits[3] = {0, 0, 0};
+    for (int vi = 0; vi < 3; vi++) {
+      clay_vertex_t* vertex = vertex_0 + vi;
+      if (vertex->pos.x < clip_x_min) {
+        clip_bits[vi] |= CLIP_MINX;
+      }
+      if (vertex->pos.x > clip_x_max) {
+        clip_bits[vi] |= CLIP_MAXX;
+      }
+
+      if (vertex->pos.y < clip_y_min) {
+        clip_bits[vi] |= CLIP_MINY;
+      }
+      if (vertex->pos.y > clip_y_max) {
+        clip_bits[vi] |= CLIP_MAXY;
+      }
+    }
+
+    unsigned short clip_status = 0;
+
+    clip_status = (clip_bits[0] & 0xf) << 8 | (clip_bits[1] & 0xf) << 4 |
+                  (clip_bits[2] & 0xf) << 0;
+
+    memcpy(_clipped_vertices + (i * 3) + 0, vertex_0,
+           sizeof(clay_vertex_t) * 3);
+    vertices_out += 3;
+
+    if (!clip_status) {
+      continue;
+    }
+
+    needed_clipping = true;
+
+#if 0
+    printf("clipping vert bits: " BYTE_TO_BINARY_PATTERN
+           " , " BYTE_TO_BINARY_PATTERN " , " BYTE_TO_BINARY_PATTERN " \n",
+           BYTE_TO_BINARY((uint8_t)clip_bits[0]),
+           BYTE_TO_BINARY((uint8_t)clip_bits[1]),
+           BYTE_TO_BINARY((uint8_t)clip_bits[2]));
+#endif
+
+    clay_vertex_t* clip_vertex_0 = _clipped_vertices + (i * 3) + 0;
+    for (int vi = 0; vi < 3; vi++) {
+      clay_vertex_t* vertex = clip_vertex_0 + vi;
+      uint8_t vert_clip_bits = clip_bits[vi];
+      if (vert_clip_bits & CLIP_MINX) {
+        vertex->pos.x = clip_x_min;
+      }
+      if (vert_clip_bits & CLIP_MAXX) {
+        vertex->pos.x = clip_x_max;
+      }
+
+      if (vert_clip_bits & CLIP_MINY) {
+        vertex->pos.y = clip_y_min;
+      }
+      if (vert_clip_bits & CLIP_MAXY) {
+        vertex->pos.y = clip_y_max;
+      }
+    }
+  }
+
+  if (!needed_clipping) {
+    *out_num_vertices = vertices_out;
+    return;
+  }
+
+  *out_num_vertices = vertices_out;
+  memcpy(vertices, _clipped_vertices, sizeof(clay_vertex_t) * vertices_out);
+}
+void ClipVerticesToScissor_Strip(clay_vertex_t* vertices, int num_vertices) {
+  if (!scissor_enabled) {
+    return;
+  }
+
+  const int clip_x_min = current_scissor_region.x;
+  const int clip_x_max =
+      current_scissor_region.x + current_scissor_region.width;
+
+  const int clip_y_min = current_scissor_region.y;
+  const int clip_y_max =
+      current_scissor_region.y + current_scissor_region.height;
+
+  for (int i = 0; i < num_vertices; i++) {
+    clay_vertex_t* vertex = &vertices[i];
+    uint8_t clip_bits = 0;
+    if (vertex->pos.x < clip_x_min) {
+      clip_bits |= CLIP_MINX;
+    }
+    if (vertex->pos.x > clip_x_max) {
+      clip_bits |= CLIP_MAXX;
+    }
+
+    if (vertex->pos.y < clip_y_min) {
+      clip_bits |= CLIP_MINY;
+    }
+    if (vertex->pos.y > clip_y_max) {
+      clip_bits |= CLIP_MAXY;
+    }
+
+    if (!clip_bits) {
+      continue;
+    }
+
+#if 0
+    printf(
+        "Clipping vert (%.0f, %.0f) => x [%d, %d] y[%d, %d] with "
+        "mask " BYTE_TO_BINARY_PATTERN " \n",
+        vertex->pos.x, vertex->pos.y, current_scissor_region.x,
+        current_scissor_region.x + current_scissor_region.height,
+        current_scissor_region.y,
+        current_scissor_region.y + current_scissor_region.height,
+        BYTE_TO_BINARY((uint8_t)clip_bits));
+#endif
+
+    if (clip_bits & CLIP_MINX) {
+      vertex->pos.x = clip_x_min;
+    }
+    if (clip_bits & CLIP_MAXX) {
+      vertex->pos.x = clip_x_max;
+    }
+
+    if (clip_bits & CLIP_MINY) {
+      vertex->pos.y = clip_y_min;
+    }
+    if (clip_bits & CLIP_MAXY) {
+      vertex->pos.y = clip_y_max;
+    }
+  }
+}
+
+#else
+void ClipVerticesToScissor(clay_vertex_t* vertices, int num_vertices,
+                           int* out_num_vertices) {
+  (void)vertices;
+  *out_num_vertices = num_vertices;
+}
+void ClipVerticesToScissor_Strip(clay_vertex_t* vertices, int num_vertices) {
+  (void)vertices;
+  (void)num_vertices;
+}
+#endif
+static bool PointOutsideRectangle(const Rectangle* rect, int point_x,
+                                  int point_y) {
+  return (point_x < rect->x || point_x > rect->x + rect->width ||
+          point_y < rect->y || point_y > rect->y + rect->height);
+}
+
 void DrawRectangle(int posX, int posY, int width, int height,
                    clay_rgba_t color) {
   clay_vertex_t vertices[] = {
@@ -114,6 +304,8 @@ void DrawRectangle(int posX, int posY, int width, int height,
           .color = color,
       }};
 
+  ClipVerticesToScissor_Strip(vertices, 4);
+
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -136,6 +328,8 @@ void DrawRectangle(int posX, int posY, int width, int height,
 #define SMOOTH_CIRCLE_ERROR_RATE 0.5f
 void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
                      int segments, clay_rgba_t color) {
+  segments = 8; /*@Todo: Change this, maybe */
+
   if (cornerRadius >= 1.0f) cornerRadius = 1.0f;
 
   Rectangle rec = (Rectangle){.x = x, .y = y, .width = width, .height = height};
@@ -327,6 +521,9 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
       .color = color,
   };
 
+  int numClippedVertices = 0;
+  ClipVerticesToScissor(vertices, vertexIndex, &numClippedVertices);
+
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -338,7 +535,11 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(clay_vertex_t),
                  &submission_pointer->color);
 
+#if defined(SOFTWARE_SCISSORING)
+  glDrawArrays(GL_TRIANGLES, 0, numClippedVertices);
+#else
   glDrawArrays(GL_TRIANGLES, 0, vertexIndex);
+#endif
 
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_COLOR_ARRAY);
@@ -348,6 +549,8 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
 void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
               float startAngle, float endAngle, int segments,
               clay_rgba_t color) {
+  segments = 8; /*@Todo: Change this, maybe */
+
   float radius = outerRadius;
   // Calculate number of segments to use for the corners
   if (segments < 4) {
@@ -362,7 +565,7 @@ void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
       ((int)fabsf(endAngle - startAngle) % 360) / (float)segments;
 
   // Allocate memory for vertices (adjust size as needed)
-  static clay_vertex_t vertices[1000];  // Adjust size based on segments
+  static clay_vertex_t vertices[24];  // Adjust size based on segments
   int vertexIndex = 0;
 
   // Generate vertices for each segment of the corner
@@ -399,6 +602,9 @@ void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
     };
   }
 
+  int numClippedVertices = 0;
+  ClipVerticesToScissor(vertices, vertexIndex, &numClippedVertices);
+
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -410,7 +616,11 @@ void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
   glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(clay_vertex_t),
                  &submission_pointer->color);
 
+#if defined(SOFTWARE_SCISSORING)
+  glDrawArrays(GL_TRIANGLES, 0, numClippedVertices);
+#else
   glDrawArrays(GL_TRIANGLES, 0, vertexIndex);
+#endif
 
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_COLOR_ARRAY);
@@ -461,6 +671,16 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         float fontSize = renderCommand->config.textElementConfig->fontSize;
         float scaleSize = fontSize / 16.0f;
 
+        const float adjustX = 4.f;
+        const float adjustY = renderCommand->boundingBox.height;  // 12.f;
+#if defined(SOFTWARE_SCISSORING)
+        if (scissor_enabled && PointOutsideRectangle(&current_scissor_region,
+                                                     boundingBox.x,
+                                                     boundingBox.y)) {
+          break;
+        }
+#endif
+
         Clay_Color color = renderCommand->config.textElementConfig->textColor;
         clay_rgba_t colorStruct = CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color);
         uint32_t fontColor = 0;
@@ -474,20 +694,17 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         glDisable(GL_BLEND);
         glEnable(GL_TEXTURE_2D);
 
-        const float adjustX = 4.f;
-        const float adjustY = renderCommand->boundingBox.height;  // 12.f;
-
-        bool glScissor = glIsEnabled(GL_SCISSOR_TEST);
-
         intraFontSetStyle(font, scaleSize, fontColor, CLEAR, 0.f,
                           INTRAFONT_ALIGN_LEFT);
 
         intraFontPrintEx(font, boundingBox.x + adjustX, boundingBox.y + adjustY,
                          text.chars, text.length);
 
-        if (glScissor) {
+#if !defined(SOFTWARE_SCISSORING)
+        if (scissor_enabled) {
           glEnable(GL_SCISSOR_TEST);
         }
+#endif
 
         glDisable(GL_TEXTURE_2D);
         glEnable(GL_BLEND);
@@ -495,7 +712,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_IMAGE: {
-          //@Todo: Add Image rendering support
+        //@Todo: Add Image rendering support
         /*
             Texture2D imageTexture = *(Texture2D
            *)renderCommand->config.imageElementConfig->imageData; DrawTextureEx(
@@ -508,16 +725,31 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START: {
+        scissor_enabled = true;
+#if defined(SOFTWARE_SCISSORING)
+        current_scissor_region = (Rectangle){
+            .x = (int)roundf(boundingBox.x),
+            .y = (int)roundf(boundingBox.y),
+            .width = (int)roundf(boundingBox.width),
+            .height = (int)roundf(boundingBox.height),
+        };
+#else
         const int y = _clay_screenHeight -
                       (int)roundf(boundingBox.y + boundingBox.height);
         const int height = (int)roundf(boundingBox.height);
+
         glEnable(GL_SCISSOR_TEST);
         glScissor((int)roundf(boundingBox.x), y, (int)roundf(boundingBox.width),
                   height);
+#endif
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END: {
+        scissor_enabled = false;
+#if defined(SOFTWARE_SCISSORING)
+#else
         glDisable(GL_SCISSOR_TEST);
+#endif
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE: {
