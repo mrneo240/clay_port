@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/param.h>
 
 // External Libraries
 #define ZROA_NO_SHORT_NAMES
@@ -41,6 +42,8 @@ Clay_Color gameIconColors[] = {{245, 149, 178, 255} /* Mauvelous */,
 Clay_RectangleElementConfig gameIconBackgroundConfig = {
     .color = {90, 90, 90, 255}, .cornerRadius = {8}};
 
+static int numFrames = 0;
+
 // This is currently broken upstream :(
 #if defined(PLATFORM_PSP)
 static const Clay_Sizing layoutExpand = {
@@ -52,9 +55,16 @@ static const Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
                                          .width = CLAY_SIZING_GROW()};
 #endif
 
-int numGames = 12;
+static const int numGames = 12;
+static const int numGamesPerRow = 3;
 char **gameText;
 Clay_String *gameTextStrings;
+
+// UI State Keys
+static uint32_t ui_key_topMenuOptionSelected = 0;
+static uint32_t ui_key_gameSelected = 0;
+static uint32_t ui_key_gameOptionSelected = 0;
+static uint32_t ui_key_gameOptionOpen = 0;
 
 typedef struct {
   union {
@@ -115,17 +125,113 @@ void RenderGameOption(Clay_String text, bool active, Clay_Color color) {
   }
 }
 
-static float mouseWheelX = 0.f;
-static float mouseWheelY = 0.f;
-static int scrollDown = true;
-static int numFrames = 0;
-// static int topMenuOptionSelected = 0;
+static void RenderGameOptionMenu(int gameSelected, int row, int col) {
+  bhash_index_t index =
+      bhash_find(local_ui_ctx.previous_state_buffer, ui_key_gameOptionSelected);
+  ui_state_poly poly_gameOptionSelected;
+  if (bhash_is_valid(index)) {
+    poly_gameOptionSelected = local_ui_ctx.previous_state_buffer->values[index];
+  } else {
+    poly_gameOptionSelected.value.i32 = 0;
+  }
+  int gameOptionSelected = poly_gameOptionSelected.value.i32;
+
+  bool LaunchSelected = gameOptionSelected == 0;
+  bool CoverSelected = gameOptionSelected == 1;
+  bool InfoSelected = gameOptionSelected == 2;
+  bool BIOSSelected = gameOptionSelected == 3;
+  Clay_FloatingAttachPoints menuattachCenter = {
+      .parent = CLAY_ATTACH_POINT_CENTER_CENTER};
+
+  Clay_FloatingAttachPoints menuattachLeft = {
+      .element = CLAY_ATTACH_POINT_RIGHT_TOP,
+      .parent = CLAY_ATTACH_POINT_CENTER_CENTER,
+  };
+
+  Clay_FloatingAttachPoints attach =
+      col == 2 ? menuattachLeft : menuattachCenter;
+
+  CLAY(CLAY_ID("GameOptionMenu"),
+       CLAY_FLOATING({
+           .zIndex = 10,
+           .attachment = attach,
+       }),
+       CLAY_LAYOUT({
+           .sizing = {.width = CLAY_SIZING_FIXED(160)},
+           .padding = {0, 8},
+           .childGap = 16,
+           .layoutDirection = CLAY_TOP_TO_BOTTOM,
+       }),
+       CLAY_RECTANGLE({.color = {40, 40, 40, 255}, .cornerRadius = {8}})) {
+    RenderGameOption(CLAY_STRING("Launch"), LaunchSelected, buttonColors[0]);
+    RenderGameOption(CLAY_STRING("Cover"), CoverSelected, buttonColors[1]);
+    RenderGameOption(CLAY_STRING("Info"), InfoSelected, buttonColors[2]);
+    RenderGameOption(CLAY_STRING("Reset to BIOS"), BIOSSelected,
+                     buttonColors[3]);
+
+    Clay_FloatingAttachPointType markerAttachPoint =
+        col == 2 ? CLAY_ATTACH_POINT_RIGHT_TOP : CLAY_ATTACH_POINT_LEFT_TOP;
+    CLAY(CLAY_ID("GameOptionMenuCorner"),
+         CLAY_FLOATING({.attachment =
+                            {
+                                .element = CLAY_ATTACH_POINT_CENTER_CENTER,
+                                .parent = markerAttachPoint,
+                            }}),
+         CLAY_LAYOUT({
+             .sizing = {.width = CLAY_SIZING_FIXED(24),
+                        .height = CLAY_SIZING_FIXED(24)},
+             .padding = {8, 8},
+             .layoutDirection = CLAY_TOP_TO_BOTTOM,
+         }),
+         CLAY_RECTANGLE({
+             .color = buttonColors[1],
+             .cornerRadius = {32},
+         })){};
+  };
+}
+
+static const Clay_String csA = {.length = 1, .chars = "A"};
+static const Clay_String csB = {.length = 1, .chars = "B"};
+static const Clay_String csC = {.length = 1, .chars = "C"};
+static const Clay_String csD = {.length = 1, .chars = "D"};
+static const Clay_String csE = {.length = 1, .chars = "E"};
+static const Clay_String csF = {.length = 1, .chars = "F"};
+static const Clay_String csG = {.length = 1, .chars = "G"};
+static const Clay_String csH = {.length = 1, .chars = "H"};
+static const Clay_String csI = {.length = 1, .chars = "I"};
+static const Clay_String csJ = {.length = 1, .chars = "J"};
+static const Clay_String csK = {.length = 1, .chars = "K"};
+static const Clay_String csL = {.length = 1, .chars = "L"};
+static const Clay_String csM = {.length = 1, .chars = "M"};
+static const Clay_String csN = {.length = 1, .chars = "N"};
+static const Clay_String csO = {.length = 1, .chars = "O"};
+static const Clay_String csP = {.length = 1, .chars = "P"};
+static const Clay_String csQ = {.length = 1, .chars = "Q"};
+static const Clay_String csR = {.length = 1, .chars = "R"};
+static const Clay_String csS = {.length = 1, .chars = "S"};
+static const Clay_String csT = {.length = 1, .chars = "T"};
+static const Clay_String csU = {.length = 1, .chars = "U"};
+static const Clay_String csV = {.length = 1, .chars = "V"};
+static const Clay_String csW = {.length = 1, .chars = "W"};
+static const Clay_String csX = {.length = 1, .chars = "X"};
+static const Clay_String csY = {.length = 1, .chars = "Y"};
+static const Clay_String csZ = {.length = 1, .chars = "Z"};
+
+static const Clay_String cs[] = {csA, csB, csC, csD, csE, csF, csG, csH, csI,
+                                 csJ, csK, csL, csM, csN, csO, csP, csQ, csR,
+                                 csS, csT, csU, csV, csW, csX, csY, csZ};
+
 static int leftMenuSelected = 0;
 static int gameOptionSelected = 0;
-// static int gameSelected = 3;
 
-static uint32_t ui_key_topMenuOptionSelected = 0;
-static uint32_t ui_key_gameSelected = 0;
+static void SetScrollContainerPercent(Clay_ScrollContainerData *scrollData,
+                                      float scrollPercent) {
+  if (scrollData->found && scrollData->contentDimensions.height > 0.f) {
+    float innerHeight = (scrollData->contentDimensions.height -
+                         scrollData->scrollContainerDimensions.height);
+    scrollData->scrollPosition->y = scrollPercent * innerHeight * -1.f;
+  }
+}
 
 static void SwapUIBuffers(void) {
   ui_state_buffer *tmp = local_ui_ctx.current_state_buffer;
@@ -136,15 +242,6 @@ static void SwapUIBuffers(void) {
 
 Clay_RenderCommandArray CreateLayout() {
   SwapUIBuffers();
-
-  if (numFrames % 300 == 0) {
-    scrollDown = !scrollDown;
-    if (scrollDown) {
-      mouseWheelY = 0.2f;
-    } else {
-      mouseWheelY = -0.2f;
-    }
-  }
 
   // Update top menu animation
   int topMenuOptionSelected = 0;
@@ -178,15 +275,9 @@ Clay_RenderCommandArray CreateLayout() {
     }
   }
 
-  if (numFrames % 120 == 0) {
-    gameOptionSelected++;
-    if (gameOptionSelected >= 4) {
-      gameOptionSelected = 0;
-    }
-  }
-
   // Update selected game animation
   int gameSelected = 0;
+  // First retrieve data from previous frames
   {
     bhash_index_t index =
         bhash_find(local_ui_ctx.previous_state_buffer, ui_key_gameSelected);
@@ -198,22 +289,108 @@ Clay_RenderCommandArray CreateLayout() {
     }
 
     gameSelected = poly_gameSelected.value.i32;
-    if (numFrames % 300 == 0) {
-      gameSelected++;
-      if (gameSelected >= 8) {
-        gameSelected = 0;
+
+    /* Controller input */
+    const int controllerTimeout = 15;
+    static int inputLockoutFrames = 0;
+    if (INPT_DPAD() && inputLockoutFrames < 0) {
+      if (INPT_DPADDirection(DPAD_DOWN)) {
+        gameSelected += 3;
       }
+      if (INPT_DPADDirection(DPAD_UP)) {
+        gameSelected -= 3;
+      }
+      if (INPT_DPADDirection(DPAD_LEFT)) {
+        gameSelected--;
+      }
+      if (INPT_DPADDirection(DPAD_RIGHT)) {
+        gameSelected++;
+      }
+      gameSelected = MIN(gameSelected, numGames - 1);
+      gameSelected = MAX(gameSelected, 0);
+      inputLockoutFrames = controllerTimeout;
     }
+    inputLockoutFrames--;
     poly_gameSelected.value.i32 = gameSelected;
     bhash_put(local_ui_ctx.current_state_buffer, ui_key_gameSelected,
               poly_gameSelected);
   }
 
+  bool gameOptionOpen = false;
+  {
+    bhash_index_t index =
+        bhash_find(local_ui_ctx.previous_state_buffer, ui_key_gameOptionOpen);
+    ui_state_poly poly_gameOptionOpen;
+    if (bhash_is_valid(index)) {
+      poly_gameOptionOpen = local_ui_ctx.previous_state_buffer->values[index];
+    } else {
+      poly_gameOptionOpen.value.i32 = 0;
+    }
+
+    gameOptionOpen = poly_gameOptionOpen.value.i32 == 1;
+
+    const int controllerTimeout = 1;
+    static int inputLockoutFrames = 0;
+    if (inputLockoutFrames < 0) {
+      if (INPT_Button(BTN_A)) {
+        gameOptionOpen = true;
+      }
+      if (INPT_Button(BTN_B)) {
+        gameOptionOpen = false;
+      }
+      inputLockoutFrames = controllerTimeout;
+      fflush(stdout);
+    }
+    inputLockoutFrames--;
+
+#if 0
+    static inputs last_input = {0};
+    inputs *cur = INPT_CurrentInput();
+    if (memcmp(cur, &last_input, sizeof(inputs))) {
+      printf(
+          "Input Report: A:%d B:%d X:%d Y:%d Start:%d L:%d R:%d Dpad:%d A1:%d "
+          "A2:%d\n",
+          cur->btn_a, cur->btn_b, cur->btn_x, cur->btn_y, cur->btn_start,
+          cur->trg_left, cur->trg_right, cur->dpad, cur->axes_1, cur->axes_2);
+    }
+    memcpy(&last_input, cur, sizeof(inputs));
+#endif
+    poly_gameOptionOpen.value.i32 = gameOptionOpen ? 1 : 0;
+    bhash_put(local_ui_ctx.current_state_buffer, ui_key_gameOptionOpen,
+              poly_gameOptionOpen);
+  }
+
+  {
+    bhash_index_t index = bhash_find(local_ui_ctx.previous_state_buffer,
+                                     ui_key_gameOptionSelected);
+    ui_state_poly poly_gameOptionSelected;
+    if (bhash_is_valid(index)) {
+      poly_gameOptionSelected =
+          local_ui_ctx.previous_state_buffer->values[index];
+    } else {
+      poly_gameOptionSelected.value.i32 = 0;
+    }
+
+    int gameOptionSelected = 0;
+    gameOptionSelected = poly_gameOptionSelected.value.i32;
+    if (numFrames % 120 == 0) {
+      gameOptionSelected++;
+      if (gameOptionSelected >= 4) {
+        gameOptionSelected = 0;
+      }
+    }
+    poly_gameOptionSelected.value.i32 = gameOptionSelected;
+    bhash_put(local_ui_ctx.current_state_buffer, ui_key_gameOptionSelected,
+              poly_gameOptionSelected);
+  }
+
   numFrames++;
+  /*
   const Clay_Vector2 mousePosition = (Clay_Vector2){.x = 30, .y = 200};
   Clay_SetPointerState(mousePosition, false);
   Clay_UpdateScrollContainers(false, (Clay_Vector2){mouseWheelX, mouseWheelY},
                               1.f / 60.f);
+  */
 
   // start ui here
   Clay_BeginLayout();
@@ -261,37 +438,6 @@ Clay_RenderCommandArray CreateLayout() {
         Clay_LayoutConfig sidebarButtonLayoutActive = (Clay_LayoutConfig){
             .sizing = {.width = CLAY_SIZING_GROW()}, .padding = {16, 8}};
 
-        Clay_String csA = {.chars = "A", .length = 1};
-        Clay_String csB = {.chars = "B", .length = 1};
-        Clay_String csC = {.chars = "C", .length = 1};
-        Clay_String csD = {.chars = "D", .length = 1};
-        Clay_String csE = {.chars = "E", .length = 1};
-        Clay_String csF = {.chars = "F", .length = 1};
-        Clay_String csG = {.chars = "G", .length = 1};
-        Clay_String csH = {.chars = "H", .length = 1};
-        Clay_String csI = {.chars = "I", .length = 1};
-        Clay_String csJ = {.chars = "J", .length = 1};
-        Clay_String csK = {.chars = "K", .length = 1};
-        Clay_String csL = {.chars = "L", .length = 1};
-        Clay_String csM = {.chars = "M", .length = 1};
-        Clay_String csN = {.chars = "N", .length = 1};
-        Clay_String csO = {.chars = "O", .length = 1};
-        Clay_String csP = {.chars = "P", .length = 1};
-        Clay_String csQ = {.chars = "Q", .length = 1};
-        Clay_String csR = {.chars = "R", .length = 1};
-        Clay_String csS = {.chars = "S", .length = 1};
-        Clay_String csT = {.chars = "T", .length = 1};
-        Clay_String csU = {.chars = "U", .length = 1};
-        Clay_String csV = {.chars = "V", .length = 1};
-        Clay_String csW = {.chars = "W", .length = 1};
-        Clay_String csX = {.chars = "X", .length = 1};
-        Clay_String csY = {.chars = "Y", .length = 1};
-        Clay_String csZ = {.chars = "Z", .length = 1};
-
-        Clay_String cs[] = {csA, csB, csC, csD, csE, csF, csG, csH, csI,
-                            csJ, csK, csL, csM, csN, csO, csP, csQ, csR,
-                            csS, csT, csU, csV, csW, csX, csY, csZ};
-
         for (int i = 0; i < 26; i++) {
           Clay_LayoutConfig buttonLayout = i == leftMenuSelected
                                                ? sidebarButtonLayoutActive
@@ -316,8 +462,7 @@ Clay_RenderCommandArray CreateLayout() {
            CLAY_SCROLL({.vertical = true}),
            CLAY_RECTANGLE(contentBackgroundConfig)) {
         // Child Elements
-        int numPerRow = 3;
-        int numRows = numGames / numPerRow;
+        int numRows = numGames / numGamesPerRow;
         for (int row = 0; row < numRows; row++) {
           CLAY(CLAY_IDI("GameIconRow", row),
                CLAY_LAYOUT({.sizing = layoutExpand,
@@ -325,7 +470,7 @@ Clay_RenderCommandArray CreateLayout() {
                             .layoutDirection = CLAY_LEFT_TO_RIGHT,
                             .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
                                                .y = CLAY_ALIGN_Y_CENTER}})) {
-            for (int col = 0; col < numPerRow; col++) {
+            for (int col = 0; col < numGamesPerRow; col++) {
               Clay_BorderElementConfig border = {};
               if ((row * 3) + col == gameSelected) {
                 Clay_Border whiteOutline = {.width = 8,
@@ -337,81 +482,27 @@ Clay_RenderCommandArray CreateLayout() {
                                                .top = whiteOutline,
                                                .cornerRadius = {8, 8, 8, 8}};
               }
-              CLAY(CLAY_IDI("GameIcon", (row * numPerRow) + col),
+              CLAY(CLAY_IDI("GameIcon", (row * numGamesPerRow) + col),
                    CLAY_LAYOUT({.sizing = gameIconSizing,
                                 .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
                                                    .y = CLAY_ALIGN_Y_CENTER}}),
                    CLAY_RECTANGLE(
-                       {.color = gameIconColors[((row * numPerRow) + col) % 5],
+                       {.color =
+                            gameIconColors[((row * numGamesPerRow) + col) % 5],
                         .cornerRadius = {16}}),
                    CLAY_BORDER(border)) {
-                CLAY_TEXT(gameTextStrings[(row * numPerRow) + col],
+                CLAY_TEXT(gameTextStrings[(row * numGamesPerRow) + col],
                           CLAY_TEXT_CONFIG({
                               .textColor = {0, 0, 0, 255},
                               .fontId = 0,
                               .fontSize = 24,
                           }));
-
+                if (gameOptionOpen) {
+                }
                 if ((row * 3) + col == gameSelected) {
-                  bool LaunchSelected = gameOptionSelected == 0;
-                  bool CoverSelected = gameOptionSelected == 1;
-                  bool InfoSelected = gameOptionSelected == 2;
-                  bool BIOSSelected = gameOptionSelected == 3;
-                  Clay_FloatingAttachPoints menuattachCenter = {
-                      .parent = CLAY_ATTACH_POINT_CENTER_CENTER};
-
-                  Clay_FloatingAttachPoints menuattachLeft = {
-                      .element = CLAY_ATTACH_POINT_RIGHT_TOP,
-                      .parent = CLAY_ATTACH_POINT_CENTER_CENTER,
-                  };
-
-                  Clay_FloatingAttachPoints attach =
-                      col == 2 ? menuattachLeft : menuattachCenter;
-
-                  CLAY(CLAY_ID("GameOptionMenu"),
-                       CLAY_FLOATING({
-                           .zIndex = 10,
-                           .attachment = attach,
-                       }),
-                       CLAY_LAYOUT({
-                           .sizing = {.width = CLAY_SIZING_FIXED(160)},
-                           .padding = {0, 8},
-                           .childGap = 16,
-                           .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                       }),
-                       CLAY_RECTANGLE(
-                           {.color = {40, 40, 40, 255}, .cornerRadius = {8}})) {
-                    RenderGameOption(CLAY_STRING("Launch"), LaunchSelected,
-                                     buttonColors[0]);
-                    RenderGameOption(CLAY_STRING("Cover"), CoverSelected,
-                                     buttonColors[1]);
-                    RenderGameOption(CLAY_STRING("Info"), InfoSelected,
-                                     buttonColors[2]);
-                    RenderGameOption(CLAY_STRING("Reset to BIOS"), BIOSSelected,
-                                     buttonColors[3]);
-
-                    Clay_FloatingAttachPointType markerAttachPoint =
-                        col == 2 ? CLAY_ATTACH_POINT_RIGHT_TOP
-                                 : CLAY_ATTACH_POINT_LEFT_TOP;
-                    CLAY(
-                        CLAY_ID("GameOptionMenuCorner"),
-                        CLAY_FLOATING(
-                            {.attachment =
-                                 {
-                                     .element = CLAY_ATTACH_POINT_CENTER_CENTER,
-                                     .parent = markerAttachPoint,
-                                 }}),
-                        CLAY_LAYOUT({
-                            .sizing = {.width = CLAY_SIZING_FIXED(24),
-                                       .height = CLAY_SIZING_FIXED(24)},
-                            .padding = {8, 8},
-                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                        }),
-                        CLAY_RECTANGLE({
-                            .color = buttonColors[1],
-                            .cornerRadius = {32},
-                        })){};
-                  };
+                  if (gameOptionOpen) {
+                    RenderGameOptionMenu(gameSelected, row, col);
+                  }
                 }
               }
             }
@@ -421,65 +512,31 @@ Clay_RenderCommandArray CreateLayout() {
     }  // End LowerContent
   }
 
-  /*
-  if (numGames > 6) {
-    Clay_ScrollContainerData scrollData = Clay_GetScrollContainerData(
-        Clay_GetElementId(CLAY_STRING("MainContent")));
-    // if (scrollData.found && scrollData.contentDimensions.height == 0.f) {
-    //   printf("scrollPosition: (%.2f, %.2f)\n",
-    // scrollData.scrollPosition->x,
-    //          scrollData.scrollPosition->y);
-    //   printf("scrollContainerDimensions: (%.2f, %.2f)\n",
-    //          scrollData.scrollContainerDimensions.width,
-    //          scrollData.scrollContainerDimensions.height);
-    //   printf("contentDimensions: (%.2f, %.2f)\n",
-    //          scrollData.contentDimensions.width,
-    //          scrollData.contentDimensions.height);
-    // }
-
-    if (scrollData.found && scrollData.contentDimensions.height > 0.f) {
-      CLAY(CLAY_ID("ScrollBar"),
-           CLAY_FLOATING(
-               {.offset = {.y = -(scrollData.scrollPosition->y /
-                                  scrollData.contentDimensions.height) *
-                                scrollData.scrollContainerDimensions.height},
-                .zIndex = 1,
-                .parentId = Clay_GetElementId(CLAY_STRING("MainContent")).id,
-                .attachment = {.element = CLAY_ATTACH_POINT_RIGHT_TOP,
-                               .parent = CLAY_ATTACH_POINT_RIGHT_TOP}})) {
-        CLAY(
-            CLAY_ID("ScrollBarButton"),
-            CLAY_LAYOUT(
-                {.sizing = {CLAY_SIZING_FIXED(12),
-                            CLAY_SIZING_FIXED(
-                                (scrollData.scrollContainerDimensions.height /
-                                 scrollData.contentDimensions.height) *
-                                scrollData.scrollContainerDimensions.height)}}),
-            CLAY_RECTANGLE({.cornerRadius = {6},
-                            .color = Clay_PointerOver(Clay__HashString(
-                                         CLAY_STRING("ScrollBar"), 0, 0))
-                                         ? (Clay_Color){100, 100, 140, 150}
-                                         : (Clay_Color){120, 120, 160, 150}}))
-  {
-        }
-      }
-    }
-  }*/
-
   /* left menu scrollbar */
   Clay_ScrollContainerData scrollData =
       Clay_GetScrollContainerData(Clay_GetElementId(CLAY_STRING("Sidebar")));
-  // if (scrollData.found && scrollData.contentDimensions.height == 0.f) {
-  //   printf("scrollPosition: (%.2f, %.2f)\n",
-  // scrollData.scrollPosition->x,
-  //          scrollData.scrollPosition->y);
-  //   printf("scrollContainerDimensions: (%.2f, %.2f)\n",
-  //          scrollData.scrollContainerDimensions.width,
-  //          scrollData.scrollContainerDimensions.height);
-  //   printf("contentDimensions: (%.2f, %.2f)\n",
-  //          scrollData.contentDimensions.width,
-  //          scrollData.contentDimensions.height);
-  // }
+
+  static float scrollPercent = 0.f;
+  float scrollAmount = INPT_AnalogF(AXES_Y) / 64.f;
+  scrollPercent += scrollAmount;
+  if (scrollPercent > 1.f) {
+    scrollPercent = 1.f;
+  }
+  if (scrollPercent < 0.f) {
+    scrollPercent = 0.f;
+  }
+
+  // scrollPercent = INPT_AnalogF(AXES_Y) * 0.5f + 0.5f;
+  SetScrollContainerPercent(&scrollData, scrollPercent);
+  /*
+  float scrollPercent = 0.f;
+  int frame300 = numFrames % 600;
+  if (frame300 > 300) {
+    frame300 = 600 - frame300;
+  }
+  scrollPercent = (float)frame300 / 300.f;
+  // SetScrollContainerPercent(&scrollData, scrollPercent);
+  */
 
   if (scrollData.found && scrollData.contentDimensions.height > 0.f) {
     CLAY(CLAY_IDI("ScrollBar", 1),
@@ -505,6 +562,19 @@ Clay_RenderCommandArray CreateLayout() {
                                         : (Clay_Color){120, 120, 160, 150}})) {}
     }
   }
+
+  Clay_ScrollContainerData gamesScrollData = Clay_GetScrollContainerData(
+      Clay_GetElementId(CLAY_STRING("MainContent")));
+
+  float scrollPercentPerRow =
+      numGamesPerRow / (float)(numGames - numGamesPerRow);
+  int currentSelectedGameRow = gameSelected / numGamesPerRow;
+  SetScrollContainerPercent(&gamesScrollData,
+                            currentSelectedGameRow * scrollPercentPerRow);
+
+  // printf("per %.1f row %d scrol %.1f\n", scrollPercentPerRow,
+  //        currentSelectedGameRow,
+  //        (currentSelectedGameRow * scrollPercentPerRow) * 100.f);
 
   return Clay_EndLayout();
 }
@@ -579,6 +649,8 @@ int main(void) {
   /* Setup hashes */
   INIT_KEY_HASH(ui_key_topMenuOptionSelected);
   INIT_KEY_HASH(ui_key_gameSelected);
+  INIT_KEY_HASH(ui_key_gameOptionOpen);
+  INIT_KEY_HASH(ui_key_gameOptionSelected);
 
   //--------------------------------------------------------------------------------------
   /* Loop until the user closes the window */

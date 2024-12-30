@@ -5,6 +5,7 @@
 
 #include <intraFont.h>
 #include <math.h>
+#include <pspctrl.h>
 #include <pspdebug.h>
 #include <pspdisplay.h>
 #include <pspgu.h>
@@ -31,7 +32,7 @@ extern void leave(void);
 static int running = 1;
 static unsigned int __attribute__((aligned(16))) list[262144];
 
-int exit_callback(int arg1, int arg2, void *common) {
+static int exit_callback(int arg1, int arg2, void *common) {
   (void)arg1;
   (void)arg2;
   (void)common;
@@ -39,7 +40,7 @@ int exit_callback(int arg1, int arg2, void *common) {
   return 0;
 }
 
-int CallbackThread(SceSize args, void *argp) {
+static int CallbackThread(SceSize args, void *argp) {
   (void)args;
   (void)argp;
   int cbid = sceKernelCreateCallback("Exit Callback", exit_callback, NULL);
@@ -48,15 +49,60 @@ int CallbackThread(SceSize args, void *argp) {
   return 0;
 }
 
-int SetupCallbacks(void) {
+static int SetupCallbacks(void) {
   int thid = sceKernelCreateThread("CallbackThread", CallbackThread, 0x11,
                                    0xFA0, PSP_THREAD_ATTR_USER, 0);
   if (thid >= 0) sceKernelStartThread(thid, 0, 0);
   return thid;
 }
 
+static void processInput(void) {
+  static inputs _input;
+  static SceCtrlData pad;
+
+  /*  Reset Everything */
+  memset(&_input, 0, sizeof(inputs));
+  memset(&pad, 0, sizeof(SceCtrlData));
+
+  if (!sceCtrlPeekBufferPositive(&pad, 1)) return;
+
+  /* DPAD */
+  _input.dpad |= (!!(pad.Buttons & PSP_CTRL_UP)) << SHIFT_UP;
+  _input.dpad |= (!!(pad.Buttons & PSP_CTRL_DOWN)) << SHIFT_DOWN;
+  _input.dpad |= (!!(pad.Buttons & PSP_CTRL_LEFT)) << SHIFT_LEFT;
+  _input.dpad |= (!!(pad.Buttons & PSP_CTRL_RIGHT)) << SHIFT_RIGHT;
+
+/* ANALOG INPUT */
+#define DEADZONE 16 /* in both directions */
+#define CENTER 128
+
+  _input.axes_1 =
+      ((pad.Lx <= CENTER - DEADZONE) || (pad.Lx >= CENTER + DEADZONE)) ? pad.Lx
+                                                                       : CENTER;
+  _input.axes_2 =
+      ((pad.Ly <= CENTER - DEADZONE) || (pad.Ly >= CENTER + DEADZONE)) ? pad.Ly
+                                                                       : CENTER;
+
+  /* TRIGGERS */
+  _input.trg_left = (!!(pad.Buttons & PSP_CTRL_LTRIGGER));
+  _input.trg_right = (!!(pad.Buttons & PSP_CTRL_RTRIGGER));
+
+  /* BUTTONS */
+  _input.btn_a = !!(pad.Buttons & PSP_CTRL_CROSS);
+  _input.btn_b = !!(pad.Buttons & PSP_CTRL_CIRCLE);
+  _input.btn_x = !!(pad.Buttons & PSP_CTRL_SQUARE);
+  _input.btn_y = !!(pad.Buttons & PSP_CTRL_TRIANGLE);
+  _input.btn_start = !!(pad.Buttons & PSP_CTRL_START);
+
+  INPT_ReceiveFromHost(_input);
+}
+
 void Clay_Platform_Initialize(int width, int height, const char *title) {
   SetupCallbacks();
+
+  // Init Controls
+  sceCtrlSetSamplingCycle(0);
+  sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
 
   // Init GU
   sceGuInit();
@@ -87,6 +133,8 @@ void Clay_Platform_Initialize(int width, int height, const char *title) {
 }
 
 void Clay_Platform_Render_Start() {
+  processInput();
+
   sceGuStart(GU_DIRECT, list);
   sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
 

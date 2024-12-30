@@ -11,6 +11,9 @@
 
 #include "clay_platform.h"
 
+#define FONT_INTRAFONT_LARGE (0)
+#define FONT_INTRAFONT_SMALL (1)
+
 void Clay_Renderer_Initialize(int width, int height, const char* title);
 
 void Clay_Renderer_Shutdown();

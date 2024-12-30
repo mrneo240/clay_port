@@ -21,7 +21,8 @@
 static int _clay_screenHeight = 0;
 static int _clay_screenWidth = 0;
 
-intraFont* font = NULL;
+static intraFont* fonts[2];
+// intraFont* font = NULL;
 
 typedef float clay_scalar_t;
 
@@ -95,6 +96,23 @@ typedef struct {
 #define GRAY 0xFF7F7F7F
 #define BLACK 0xFF000000
 #define RED 0xFF0000FF
+
+static int sanitizeFontId(int fontId) {
+  if (fontId < 0) {
+#if DEBUG
+    printf("Cant find font %d , based on 0 min\n", fontId);
+#endif
+    fontId = 0;
+  }
+  if (fontId >= (sizeof(fonts) / sizeof(intraFont*))) {
+#if DEBUG
+    printf("Cant find font %d , based on %d max\n", fontId,
+           (sizeof(fonts) / sizeof(intraFont*)));
+#endif
+    fontId = 0;
+  }
+  return fontId;
+}
 
 static Rectangle current_scissor_region = {0};
 static bool scissor_enabled = false;
@@ -633,11 +651,22 @@ void Clay_Renderer_Initialize(int width, int height, const char* title) {
   intraFontInit();
   /* Dreamcast recommended to use INTRAFONT_CACHE_ASCII as an option but not
    * required */
-  font = intraFontLoad(PATH_ASSETS "ltn8.pgf", INTRAFONT_CACHE_ASCII);
-  if (!font) {
+  fonts[FONT_INTRAFONT_LARGE] =
+      intraFontLoad(PATH_ASSETS "ltn4.pgf", INTRAFONT_CACHE_ASCII);
+  fonts[FONT_INTRAFONT_SMALL] =
+      intraFontLoad(PATH_ASSETS "ltn8.pgf", INTRAFONT_CACHE_ASCII);
+  if (!fonts[FONT_INTRAFONT_LARGE]) {
+    fprintf(stderr, "Error loading ltn4.pgf");
     return;
   }
-  intraFontSetStyle(font, 1.f, BLACK, CLEAR, 0.f, INTRAFONT_ALIGN_LEFT);
+  if (!fonts[FONT_INTRAFONT_SMALL]) {
+    fprintf(stderr, "Error loading ltn8.pgf");
+    return;
+  }
+  intraFontSetStyle(fonts[FONT_INTRAFONT_LARGE], 1.f, BLACK, CLEAR, 0.f,
+                    INTRAFONT_ALIGN_LEFT);
+  intraFontSetStyle(fonts[FONT_INTRAFONT_SMALL], 1.f, BLACK, CLEAR, 0.f,
+                    INTRAFONT_ALIGN_LEFT);
 
   _clay_screenWidth = width;
   _clay_screenHeight = height;
@@ -673,10 +702,14 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
 
         const float adjustX = 4.f;
         const float adjustY = renderCommand->boundingBox.height;  // 12.f;
+        int currentFontId =
+            sanitizeFontId(renderCommand->config.textElementConfig->fontId);
+        intraFont* currentFont = fonts[currentFontId];
+
 #if defined(SOFTWARE_SCISSORING)
-        if (scissor_enabled && PointOutsideRectangle(&current_scissor_region,
-                                                     boundingBox.x,
-                                                     boundingBox.y)) {
+        if (scissor_enabled &&
+            PointOutsideRectangle(&current_scissor_region, boundingBox.x,
+                                  boundingBox.y)) {
           break;
         }
 #endif
@@ -694,11 +727,11 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         glDisable(GL_BLEND);
         glEnable(GL_TEXTURE_2D);
 
-        intraFontSetStyle(font, scaleSize, fontColor, CLEAR, 0.f,
+        intraFontSetStyle(currentFont, scaleSize, fontColor, CLEAR, 0.f,
                           INTRAFONT_ALIGN_LEFT);
 
-        intraFontPrintEx(font, boundingBox.x + adjustX, boundingBox.y + adjustY,
-                         text.chars, text.length);
+        intraFontPrintEx(currentFont, boundingBox.x + adjustX,
+                         boundingBox.y + adjustY, text.chars, text.length);
 
 #if !defined(SOFTWARE_SCISSORING)
         if (scissor_enabled) {
@@ -884,12 +917,15 @@ Clay_Dimensions IntraFont_MeasureText(Clay_String* text,
                                       Clay_TextElementConfig* config) {
   // Measure string size for Font
   Clay_Dimensions textSize = {0};
+  int currentFontId = sanitizeFontId(config->fontId);
+  intraFont* currentFont = fonts[currentFontId];
 
   float fontSize = config->fontSize;
   float scaleSize = fontSize / 16.0f;
-  font->size = scaleSize;
+  currentFont->size = scaleSize;
 
-  textDimen dimen = intraFontMeasureTextEx(font, text->chars, text->length);
+  textDimen dimen =
+      intraFontMeasureTextEx(currentFont, text->chars, text->length);
 
   textSize.width = dimen.width;
   textSize.height = dimen.height;
@@ -899,7 +935,8 @@ Clay_Dimensions IntraFont_MeasureText(Clay_String* text,
 void Clay_Platform_Shutdown();
 
 void Clay_Renderer_Shutdown() {
-  intraFontUnload(font);
+  intraFontUnload(fonts[FONT_INTRAFONT_LARGE]);
+  intraFontUnload(fonts[FONT_INTRAFONT_SMALL]);
   intraFontShutdown();
 
   Clay_Platform_Shutdown();
