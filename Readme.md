@@ -27,15 +27,7 @@ Port of Clay to interesting platforms
   - dreamcast (KallistiOS)
   - psp (pspsdk)
 
-## Step 1 (Current as of 12-28-2024)
-
-Apply patch because of broken upstream:
-
-```bash
-git apply clay_upstream.patch --directory clay
-```
-
-## Step 2
+## Step 1
 
 Configure the project and your platform using meson
 
