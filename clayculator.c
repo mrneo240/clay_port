@@ -27,9 +27,7 @@
 #include <string.h>
 #include <sys/param.h>
 
-// Clay
-#define CLAY_IMPLEMENTATION
-#include "clay.h"
+#include "clay_include.h"
 #include "clay_renderer.h"
 
 static const int padding = 8;
@@ -293,11 +291,14 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                           .width = CLAY_SIZING_GROW()},
                .padding = {padding, padding},
                .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}})) {
-        CLAY_TEXT(CLAY_STRING(display), CLAY_TEXT_CONFIG({
-                                            .fontId = FONT_INTRAFONT_LARGE,
-                                            .fontSize = 72,
-                                            .textColor = COLOURS[4],
-                                        }));
+        Clay_String displayCS =
+            (Clay_String){.chars = display, .length = strlen(display)};
+
+        CLAY_TEXT(displayCS, CLAY_TEXT_CONFIG({
+                                 .fontId = FONT_INTRAFONT_LARGE,
+                                 .fontSize = 72,
+                                 .textColor = COLOURS[4],
+                             }));
       }
       CLAY(CLAY_ID("InnerContent"),
            CLAY_RECTANGLE((Clay_RectangleElementConfig){.color = COLOURS[0]}),
@@ -320,17 +321,13 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                                      .childGap = padding})) {
           ButtonGrid buttonGrid = *grid;
           for (int i = 0; i < BTN_COLS; i++) {
-            char rowId[10];
-            snprintf(rowId, sizeof rowId, "CalcRow%d", i);
-            CLAY(CLAY_ID(rowId), CLAY_LAYOUT((Clay_LayoutConfig){
-                                     .sizing = layoutExpand,
-                                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                                     .childGap = 8})) {
+            CLAY(CLAY_IDI("CalcRow", i),
+                 CLAY_LAYOUT(
+                     (Clay_LayoutConfig){.sizing = layoutExpand,
+                                         .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                                         .childGap = 8})) {
               for (int j = 0; j < BTN_ROWS; j++) {
                 int buttonIndex = (i * BTN_ROWS) + j;
-
-                char buttonId[16];
-                snprintf(buttonId, sizeof buttonId, "CalcButton%d_%d", i, j);
 
                 Button b = buttonGrid.rows[i].buttons[j];
                 Clay_Color c = COLOURS[b.colour];
@@ -338,7 +335,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                   c = COLOURS_LIGHTENED[b.colour];
                 }
 
-                CLAY(CLAY_ID(buttonId),
+                CLAY(CLAY_IDI("CalcButton", buttonIndex),
                      CLAY_LAYOUT((Clay_LayoutConfig){
                          .sizing = layoutExpand,
                          .padding = {24, 12},
@@ -446,11 +443,14 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
                           .width = CLAY_SIZING_GROW()},
                .padding = {padding, padding},
                .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}})) {
-        CLAY_TEXT(CLAY_STRING(display), CLAY_TEXT_CONFIG({
-                                            .fontId = FONT_INTRAFONT_SMALL,
-                                            .fontSize = 64,
-                                            .textColor = COLOURS[4],
-                                        }));
+        Clay_String displayCS =
+            (Clay_String){.chars = display, .length = strlen(display)};
+
+        CLAY_TEXT(displayCS, CLAY_TEXT_CONFIG({
+                                 .fontId = FONT_INTRAFONT_SMALL,
+                                 .fontSize = 64,
+                                 .textColor = COLOURS[4],
+                             }));
       }
     }
     CLAY(CLAY_ID("MainContent"),
@@ -467,17 +467,13 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
                                           .childGap = padding})) {
         ButtonGrid buttonGrid = *grid;
         for (int i = 0; i < BTN_COLS; i++) {
-          char rowId[10];
-          snprintf(rowId, sizeof rowId, "CalcRow%d", i);
-          CLAY(CLAY_ID(rowId), CLAY_LAYOUT((Clay_LayoutConfig){
-                                   .sizing = layoutExpand,
-                                   .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                                   .childGap = 8})) {
+          CLAY(CLAY_IDI("CalcRow", i),
+               CLAY_LAYOUT(
+                   (Clay_LayoutConfig){.sizing = layoutExpand,
+                                       .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                                       .childGap = 8})) {
             for (int j = 0; j < BTN_ROWS; j++) {
               int buttonIndex = (i * BTN_ROWS) + j;
-
-              char buttonId[16];
-              snprintf(buttonId, sizeof buttonId, "CalcButton%d_%d", i, j);
 
               Button b = buttonGrid.rows[i].buttons[j];
               Clay_Color c = COLOURS[b.colour];
@@ -485,7 +481,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
                 c = COLOURS_LIGHTENED[b.colour];
               }
 
-              CLAY(CLAY_ID(buttonId),
+              CLAY(CLAY_IDI("CalcButton", buttonIndex),
                    CLAY_LAYOUT((Clay_LayoutConfig){
                        .sizing = layoutExpand,
                        .padding = {padding + 4, padding + 4},
@@ -608,7 +604,7 @@ int main(void) {
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
       totalMemorySize, malloc(totalMemorySize));
 
-  Clay_SetMeasureTextFunction(IntraFont_MeasureText);
+  Clay_SetMeasureTextFunction(Renderer_MeasureText);
   Clay_Initialize(clayMemory,
                   (Clay_Dimensions){(float)screenWidth, (float)screenHeight},
                   (Clay_ErrorHandler){HandleClayErrors});

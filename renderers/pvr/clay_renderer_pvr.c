@@ -1,46 +1,43 @@
-#include <intraFont.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "clay_platform.h"
 #include "clay_renderer.h"
+#include "clay_types.h"
 
-#ifndef PATH_ASSETS
-#define PATH_ASSETS ""
-#endif
+#define SOFTWARE_SCISSORING (1)
 
-// #define EMULATE_PLATFORM_DC (1)
-#if defined(PLATFORM_DC) || defined(EMULATE_PLATFORM_DC)
-#define SOFTWARE_SCISSORING
-#endif
-// #undef SOFTWARE_SCISSORING
+static pvr_poly_hdr_t hdr;
+static pvr_dr_state_t dr_state;
 
 static int _clay_screenHeight = 0;
 static int _clay_screenWidth = 0;
-
-static intraFont* fonts[2];
-// intraFont* font = NULL;
 
 #define CLAY_RECTANGLE_TO_OPENGL_LEGACY_RECTANGLE(rectangle)      \
   (Rectangle) {                                                   \
     .x = rectangle.x, .y = rectangle.y, .width = rectangle.width, \
     .height = rectangle.height                                    \
   }
-#define CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)                              \
-  (clay_rgba_t) {                                                             \
-    .r = (unsigned char)roundf(color.r), .g = (unsigned char)roundf(color.g), \
-    .b = (unsigned char)roundf(color.b), .a = (unsigned char)roundf(color.a)  \
+#define CLAY_COLOR_TO_OPENGL_LEGACY_COLOR(color)                  \
+  (clay_rgba_t) {                                                 \
+    .r = (unsigned char)(color.r), .g = (unsigned char)(color.g), \
+    .b = (unsigned char)(color.b), .a = (unsigned char)(color.a)  \
   }
 
 /* ARGB */
-#define WHITE 0xFFFFFFFF
-#define CLEAR 0x00FFFFFF
-#define GRAY 0xFF7F7F7F
-#define BLACK 0xFF000000
-#define RED 0xFF0000FF
+#define WHITE (0xFFFFFFFF)
+#define CLEAR (0x00FFFFFF)
+#define GRAY (0xFF7F7F7F)
+#define BLACK (0xFF000000)
+
+#define RED (0xFFFF0000)
+#define GREEN (0xFF00FF00)
+#define BLUE (0xFF0000FF)
+
+void* fonts[2] = {{0}};
 
 static int sanitizeFontId(int fontId) {
   if (fontId < 0) {
@@ -49,10 +46,10 @@ static int sanitizeFontId(int fontId) {
 #endif
     fontId = 0;
   }
-  if (fontId >= (sizeof(fonts) / sizeof(intraFont*))) {
+  if (fontId >= (sizeof(fonts) / sizeof(void*))) {
 #if DEBUG
     printf("Cant find font %d , based on %d max\n", fontId,
-           (sizeof(fonts) / sizeof(intraFont*)));
+           (sizeof(fonts) / sizeof(void*)));
 #endif
     fontId = 0;
   }
@@ -243,54 +240,43 @@ static bool PointOutsideRectangle(const Rectangle* rect, int point_x,
           point_y < rect->y || point_y > rect->y + rect->height);
 }
 
+static int z = 1;
 void DrawRectangle(int posX, int posY, int width, int height,
                    clay_rgba_t color) {
-  clay_vertex_t vertices[] = {
-      (clay_vertex_t){
-          .pos = {.x = posX, .y = posY, .z = 0},
-          .uv = {.x = 0, .y = 0},
-          .color = color,
-      },
-      (clay_vertex_t){
-          .pos = {.x = posX + width, .y = posY, .z = 0},
-          .uv = {.x = 1, .y = 0},
-          .color = color,
-      },
-      (clay_vertex_t){
-          .pos = {.x = posX, .y = posY + height, .z = 0},
-          .uv = {.x = 0, .y = 1},
-          .color = color,
-      },
-      (clay_vertex_t){
-          .pos = {.x = posX + width, .y = posY + height, .z = 0},
-          .uv = {.x = 1, .y = 1},
-          .color = color,
-      }};
+  pvr_vertex_t vert;
+  uint32_t col = 0;
+  memcpy(&col, &color, sizeof(uint32_t));
 
-  ClipVerticesToScissor_Strip(vertices, 4);
+  pvr_prim(&hdr, sizeof(hdr));
+  vert.flags = PVR_CMD_VERTEX;
+  vert.x = posX;
+  vert.y = posY;
+  vert.z = z;
+  vert.argb = col;
+  vert.oargb = 0;
+  pvr_prim(&vert, sizeof(vert));
 
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  vert.flags = PVR_CMD_VERTEX;
+  vert.x = posX + width;
+  vert.y = posY;
+  pvr_prim(&vert, sizeof(vert));
 
-  clay_vertex_t* submission_pointer = &vertices[0];
-  glVertexPointer(3, GL_FLOAT, sizeof(clay_vertex_t), &submission_pointer->pos);
-  glTexCoordPointer(2, GL_FLOAT, sizeof(clay_vertex_t),
-                    &submission_pointer->uv);
-  glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(clay_vertex_t),
-                 &submission_pointer->color);
+  vert.flags = PVR_CMD_VERTEX;
+  vert.x = posX;
+  vert.y = posY + height;
+  pvr_prim(&vert, sizeof(vert));
 
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_COLOR_ARRAY);
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  vert.flags = PVR_CMD_VERTEX_EOL;
+  vert.x = posX + width;
+  vert.y = posY + height;
+  pvr_prim(&vert, sizeof(vert));
 }
 
 #define M_PI_F ((float)M_PI)
 #define SMOOTH_CIRCLE_ERROR_RATE (0.5f)
-void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
-                     int segments, clay_rgba_t color) {
+static void DrawRoundedRect(int x, int y, int width, int height,
+                            float cornerRadius, int segments,
+                            clay_rgba_t color) {
   segments = 8; /*@Todo: Change this, maybe */
 
   if (cornerRadius >= 1.0f) cornerRadius = 1.0f;
@@ -315,14 +301,15 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
 
   // Coordinates of the 12 points that define the rounded rect
   const clay_vec2_t point[12] = {
-      {(float)rec.x + radius, rec.y},
-      {(float)(rec.x + rec.width) - radius, rec.y},
-      {rec.x + rec.width, (float)rec.y + radius},  // PO, P1, P2
-      {rec.x + rec.width, (float)(rec.y + rec.height) - radius},
-      {(float)(rec.x + rec.width) - radius, rec.y + rec.height},  // P3, P4
-      {(float)rec.x + radius, rec.y + rec.height},
-      {rec.x, (float)(rec.y + rec.height) - radius},
-      {rec.x, (float)rec.y + radius},  // P5, P6, P7
+      {(float)rec.x + radius, (float)rec.y},
+      {(float)(rec.x + rec.width) - radius, (float)rec.y},
+      {(float)rec.x + rec.width, (float)rec.y + radius},  // PO, P1, P2
+      {(float)rec.x + rec.width, (float)(rec.y + rec.height) - radius},
+      {(float)(rec.x + rec.width) - radius,
+       (float)rec.y + rec.height},  // P3, P4
+      {(float)rec.x + radius, (float)rec.y + rec.height},
+      {(float)rec.x, (float)(rec.y + rec.height) - radius},
+      {(float)rec.x, (float)rec.y + radius},  // P5, P6, P7
       {(float)rec.x + radius, (float)rec.y + radius},
       {(float)(rec.x + rec.width) - radius, (float)rec.y + radius},  // P8, P9
       {(float)(rec.x + rec.width) - radius,
@@ -487,31 +474,35 @@ void DrawRoundedRect(int x, int y, int width, int height, float cornerRadius,
   int numClippedVertices = 0;
   ClipVerticesToScissor(vertices, vertexIndex, &numClippedVertices);
 
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  pvr_vertex_t vert;
+  uint32_t col = 0;
+  memcpy(&col, &color, sizeof(uint32_t));
+  pvr_prim(&hdr, sizeof(hdr));
+  vert.z = z;
+  vert.argb = col;
+  vert.oargb = 0;
 
-  clay_vertex_t* submission_pointer = &vertices[0];
-  glVertexPointer(3, GL_FLOAT, sizeof(clay_vertex_t), &submission_pointer->pos);
-  glTexCoordPointer(2, GL_FLOAT, sizeof(clay_vertex_t),
-                    &submission_pointer->uv);
-  glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(clay_vertex_t),
-                 &submission_pointer->color);
+  for (int idx = 0; idx < numClippedVertices / 3; idx++) {
+    vert.flags = PVR_CMD_VERTEX;
+    vert.x = vertices[idx * 3 + 0].pos.x;
+    vert.y = vertices[idx * 3 + 0].pos.y;
+    pvr_prim(&vert, sizeof(vert));
 
-#if defined(SOFTWARE_SCISSORING)
-  glDrawArrays(GL_TRIANGLES, 0, numClippedVertices);
-#else
-  glDrawArrays(GL_TRIANGLES, 0, vertexIndex);
-#endif
+    vert.flags = PVR_CMD_VERTEX;
+    vert.x = vertices[idx * 3 + 1].pos.x;
+    vert.y = vertices[idx * 3 + 1].pos.y;
+    pvr_prim(&vert, sizeof(vert));
 
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_COLOR_ARRAY);
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    vert.flags = PVR_CMD_VERTEX_EOL;
+    vert.x = vertices[idx * 3 + 2].pos.x;
+    vert.y = vertices[idx * 3 + 2].pos.y;
+    pvr_prim(&vert, sizeof(vert));
+  }
 }
 
-void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
-              float startAngle, float endAngle, int segments,
-              clay_rgba_t color) {
+static void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
+                     float startAngle, float endAngle, int segments,
+                     clay_rgba_t color) {
   segments = 8; /*@Todo: Change this, maybe */
 
   float radius = outerRadius;
@@ -568,91 +559,84 @@ void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
   int numClippedVertices = 0;
   ClipVerticesToScissor(vertices, vertexIndex, &numClippedVertices);
 
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  pvr_vertex_t vert;
+  uint32_t col = 0;
+  memcpy(&col, &color, sizeof(uint32_t));
+  pvr_prim(&hdr, sizeof(hdr));
+  vert.z = z;
+  vert.argb = col;
+  vert.oargb = 0;
 
-  clay_vertex_t* submission_pointer = &vertices[0];
-  glVertexPointer(3, GL_FLOAT, sizeof(clay_vertex_t), &submission_pointer->pos);
-  glTexCoordPointer(2, GL_FLOAT, sizeof(clay_vertex_t),
-                    &submission_pointer->uv);
-  glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(clay_vertex_t),
-                 &submission_pointer->color);
+  for (int idx = 0; idx < numClippedVertices / 3; idx++) {
+    vert.flags = PVR_CMD_VERTEX;
+    vert.x = vertices[idx * 3 + 0].pos.x;
+    vert.y = vertices[idx * 3 + 0].pos.y;
+    pvr_prim(&vert, sizeof(vert));
 
-#if defined(SOFTWARE_SCISSORING)
-  glDrawArrays(GL_TRIANGLES, 0, numClippedVertices);
-#else
-  glDrawArrays(GL_TRIANGLES, 0, vertexIndex);
-#endif
+    vert.flags = PVR_CMD_VERTEX;
+    vert.x = vertices[idx * 3 + 1].pos.x;
+    vert.y = vertices[idx * 3 + 1].pos.y;
+    pvr_prim(&vert, sizeof(vert));
 
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_COLOR_ARRAY);
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    vert.flags = PVR_CMD_VERTEX_EOL;
+    vert.x = vertices[idx * 3 + 2].pos.x;
+    vert.y = vertices[idx * 3 + 2].pos.y;
+    pvr_prim(&vert, sizeof(vert));
+  }
 }
 
 void Clay_Renderer_Initialize(int width, int height, const char* title) {
+  if (width > 640) {
+    width = 640;
+  }
+  if (height > 480) {
+    height = 480;
+  }
+
   Clay_Platform_Initialize(width, height, title);
 
-  intraFontInit();
+  // intraFontInit();
   /* Dreamcast recommended to use INTRAFONT_CACHE_ASCII as an option but not
    * required */
-  fonts[FONT_INTRAFONT_LARGE] =
-      intraFontLoad(PATH_ASSETS "ltn4.pgf", INTRAFONT_CACHE_ASCII);
-  fonts[FONT_INTRAFONT_SMALL] =
-      intraFontLoad(PATH_ASSETS "ltn8.pgf", INTRAFONT_CACHE_ASCII);
-  if (!fonts[FONT_INTRAFONT_LARGE]) {
-    fprintf(stderr, "Error loading ltn4.pgf");
-    return;
-  }
-  if (!fonts[FONT_INTRAFONT_SMALL]) {
-    fprintf(stderr, "Error loading ltn8.pgf");
-    return;
-  }
-  intraFontSetStyle(fonts[FONT_INTRAFONT_LARGE], 1.f, BLACK, CLEAR, 0.f,
-                    INTRAFONT_ALIGN_LEFT);
-  intraFontSetStyle(fonts[FONT_INTRAFONT_SMALL], 1.f, BLACK, CLEAR, 0.f,
-                    INTRAFONT_ALIGN_LEFT);
+
+  // font = intraFontLoad("ltn8.pgf", INTRAFONT_CACHE_ASCII);
+  // if (!font) {
+  //   return;
+  // }
+  // intraFontSetStyle(font, 1.f, BLACK, CLEAR, 0.f, INTRAFONT_ALIGN_LEFT);
 
   _clay_screenWidth = width;
   _clay_screenHeight = height;
+
+  pvr_poly_cxt_t cxt;
+  pvr_poly_cxt_col(&cxt, PVR_LIST_OP_POLY);
+  cxt.gen.shading = PVR_SHADE_GOURAUD;  // PVR_SHADE_FLAT
+  pvr_poly_compile(&hdr, &cxt);
 }
 
-static void perspectiveGL(GLdouble fovY, GLdouble aspect, GLdouble zNear,
-                          GLdouble zFar) {
-  GLdouble fW, fH;
+static void stats(void) {
+#if (DEBUG)
+  pvr_stats_t stats;
 
-  // fH = tan( (fovY / 2) / 180 * M_PI ) * zNear;
-  fH = tan(fovY / 360.0 * M_PI) * zNear;
-  fW = fH * aspect;
-
-  glFrustum(-fW, fW, -fH, fH, zNear, zFar);
+  pvr_get_stats(&stats);
+  dbglog(DBG_DEBUG, "3D Stats: %d frames, frame rate ~%f fps\n",
+         stats.vbl_count, (double)stats.frame_rate);
+#endif
 }
 
 void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_Start();
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-  glClearDepth(1.0f);
-  glDepthFunc(GL_LESS);
-  glDisable(GL_DEPTH_TEST);
-  glShadeModel(GL_SMOOTH);
-  glEnable(GL_CULL_FACE);
-  glFrontFace(GL_CW);
-  glCullFace(GL_BACK);
+  pvr_scene_begin();
+  pvr_list_begin(PVR_LIST_OP_POLY);
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  bool isScissorActive = false;
+  z = 1;
 
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-
-  glOrtho(0, _clay_screenWidth, _clay_screenHeight, 0, -1, 1);
-
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-
-  // glEnable(GL_BLEND);
+  // vertexOffset = 0;
 
   for (int j = 0; j < renderCommands.length; j++) {
+    z++;
     Clay_RenderCommand* renderCommand =
         Clay_RenderCommandArray_Get(&renderCommands, j);
     Clay_BoundingBox boundingBox = renderCommand->boundingBox;
@@ -669,7 +653,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         const float adjustY = renderCommand->boundingBox.height;  // 12.f;
         int currentFontId =
             sanitizeFontId(renderCommand->config.textElementConfig->fontId);
-        intraFont* currentFont = fonts[currentFontId];
+        // intraFont* currentFont = fonts[currentFontId];
 
 #if defined(SOFTWARE_SCISSORING)
         if (scissor_enabled &&
@@ -686,40 +670,41 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
 
         // glDepthFunc(GL_LESS);      // The Type Of Depth Test To Do
         // glDisable(GL_DEPTH_TEST);  // Enables Depth Testing
-        glEnable(GL_CULL_FACE);
-        glFrontFace(GL_CW);
-        glCullFace(GL_BACK);
-        glDisable(GL_BLEND);
-        glEnable(GL_TEXTURE_2D);
 
-        intraFontSetStyle(currentFont, scaleSize, fontColor, CLEAR, 0.f,
-                          INTRAFONT_ALIGN_LEFT);
+        // glEnable(GL_CULL_FACE);
+        // glFrontFace(GL_CW);
+        // glCullFace(GL_BACK);
+        // glDisable(GL_BLEND);
+        // glEnable(GL_TEXTURE_2D);
 
-        intraFontPrintEx(currentFont, boundingBox.x + adjustX,
-                         boundingBox.y + adjustY, text.chars, text.length);
+        // intraFontSetStyle(currentFont, scaleSize, fontColor, CLEAR, 0.f,
+        //                   INTRAFONT_ALIGN_LEFT);
+
+        // intraFontPrintEx(currentFont, boundingBox.x + adjustX,
+        //                  boundingBox.y + adjustY, text.chars, text.length);
 
 #if !defined(SOFTWARE_SCISSORING)
         if (scissor_enabled) {
-          glEnable(GL_SCISSOR_TEST);
+          // glEnable(GL_SCISSOR_TEST);
         }
 #endif
 
-        glDisable(GL_TEXTURE_2D);
-        glEnable(GL_BLEND);
+        // glDisable(GL_TEXTURE_2D);
+        // glEnable(GL_BLEND);
 
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_IMAGE: {
         //@Todo: Add Image rendering support
         /*
-            Texture2D imageTexture = *(Texture2D
-           *)renderCommand->config.imageElementConfig->imageData;
-           DrawTextureEx( imageTexture, (Vector2){boundingBox.x,
-           boundingBox.y}, 0, boundingBox.width / (float)imageTexture.width,
-            WHITE); //
- //
- //
-            */
+        Texture2D imageTexture = *(Texture2D
+       *)renderCommand->config.imageElementConfig->imageData;
+       DrawTextureEx( imageTexture, (Vector2){boundingBox.x,
+       boundingBox.y}, 0, boundingBox.width / (float)imageTexture.width,
+        WHITE); //
+//
+//
+        */
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START: {
@@ -736,9 +721,10 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
                       (int)roundf(boundingBox.y + boundingBox.height);
         const int height = (int)roundf(boundingBox.height);
 
-        glEnable(GL_SCISSOR_TEST);
-        glScissor((int)roundf(boundingBox.x), y, (int)roundf(boundingBox.width),
-                  height);
+        // glEnable(GL_SCISSOR_TEST);
+        // glScissor((int)roundf(boundingBox.x), y,
+        // (int)roundf(boundingBox.width),
+        //           height);
 #endif
         break;
       }
@@ -746,7 +732,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         scissor_enabled = false;
 #if defined(SOFTWARE_SCISSORING)
 #else
-        glDisable(GL_SCISSOR_TEST);
+        // glDisable(GL_SCISSOR_TEST);
 #endif
         break;
       }
@@ -855,7 +841,6 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
       }
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
         break;
-
       default: {
         printf("Error: unhandled render command.");
 #ifdef CLAY_OVERFLOW_TRAP
@@ -866,37 +851,32 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
     }
   }
 
+  pvr_list_finish();
+  pvr_scene_finish();
+  stats();
   Clay_Platform_Render_End();
 }
 
 Clay_Dimensions Renderer_MeasureText(Clay_String* text,
-                                      Clay_TextElementConfig* config) {
-#if 0
+                                     Clay_TextElementConfig* config) {
   // Measure string size for Font
-  Clay_Dimensions textSize = {0};
-  int currentFontId = sanitizeFontId(config->fontId);
-  intraFont* currentFont = fonts[currentFontId];
-
-  float fontSize = config->fontSize;
-  float scaleSize = fontSize / 16.0f;
-  currentFont->size = scaleSize;
-
-  textDimen dimen =
-      intraFontMeasureTextEx(currentFont, text->chars, text->length);
-
-  textSize.width = dimen.width;
-  textSize.height = dimen.height;
-#endif
   Clay_Dimensions textSize = {.width = 4, .height = 8};
+
+  // float fontSize = config->fontSize;
+  // float scaleSize = fontSize / 16.0f;
+  // font->size = scaleSize;
+
+  // textDimen dimen = intraFontMeasureTextEx(font, text->chars, text->length);
+
+  // textSize.width = dimen.width;
+  // textSize.height = dimen.height;
   return textSize;
 }
 
 void Clay_Platform_Shutdown();
-
 void Clay_Renderer_Shutdown() {
-  intraFontUnload(fonts[FONT_INTRAFONT_LARGE]);
-  intraFontUnload(fonts[FONT_INTRAFONT_SMALL]);
-  intraFontShutdown();
+  // intraFontUnload(font);
+  // intraFontShutdown();
 
   Clay_Platform_Shutdown();
 }

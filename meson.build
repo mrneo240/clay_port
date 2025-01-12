@@ -13,7 +13,7 @@ m_dep = cc.find_library('m', required : false)
 libintrafont_dep = dependency('libintrafont', fallback : ['libintrafont', 'libintrafont_dep'])
 
 # Options
-#opt_renderer = get_option('renderer')
+opt_renderer = get_option('renderer')
 opt_platform = get_option('platform')
 
 inc_base = []
@@ -29,13 +29,14 @@ platform_dep = []
 platform_inc = []
 platform_inc += include_directories('platforms/shared')
 
-platform_src = []
+platform_src = ['clay_impl.c']
 platform_src += ['platforms/shared/input.c']
 
 if opt_platform == 'glfw'
   glfw_dep = dependency('glfw3', fallback : ['glfw3', 'glfw3_dep'])
   glad_dep = dependency('glad', fallback : ['glad', 'glad_dep'])
-  platform_dep += [glfw_dep , glad_dep]
+  #cglm_dep = dependency('cglm', fallback : ['cglm', 'cglm_dep'])
+  platform_dep += [glfw_dep , glad_dep, libintrafont_dep]
 
   platform_src += ['platforms/glfw/clay_platform_glfw.c']
   platform_inc += include_directories('platforms/glfw/')
@@ -66,27 +67,39 @@ elif opt_platform == 'dc'
   arg_code += ['-DPATH_ASSETS="/cd/"', '-DPATH_USERDATA="/pc/"']
   arg_base += ['-mpretend-cmove','-fsingle-precision-constant', '-ffast-math', '-O2', '-g0',
                  '-fomit-frame-pointer', '-finline-functions',  '-mfsrra', '-mfsca']
-  opt_renderer = 'gl_legacy'
 
   dc_debug_dep = declare_dependency(compile_args: [], link_args :  ['-g3', '-Wl,-Map=output.map'])
-  libgldc_dep = dependency('gldc', fallback : ['gldc', 'libgldc_dep'])
-  platform_dep += [libgldc_dep, dc_debug_dep]
-
-  platform_src += ['platforms/dreamcast/clay_platform_dreamcast.c']
-  platform_inc += include_directories('platforms/dreamcast/')
+  platform_dep += [dc_debug_dep]
+  platform_inc += include_directories('platforms/dreamcast')
 else
   error('No platform chosen!')
 endif
 
-
 if opt_renderer == 'gl_legacy'
     renderer_src = ['renderers/gl_legacy/clay_renderer_gl_legacy.c']
     renderer_inc = include_directories('renderers/gl_legacy/')
-elif opt_renderer == 'gu'
+    if opt_platform == 'glfw'
+    elif opt_platform == 'dc'
+      error('Bad GLdc!')
+      libgldc_dep = dependency('gldc', fallback : ['gldc', 'libgldc_dep'])
+      platform_dep += [libgldc_dep, libintrafont_dep]
+
+      platform_src += ['platforms/dreamcast/gldc/clay_platform_dreamcast_gldc.c']
+      platform_inc += include_directories('platforms/dreamcast/gldc')
+    else
+      error('Incorrect platform for renderer gl_legacy!')
+    endif
+elif opt_renderer == 'gu' and opt_platform == 'psp'
     renderer_src = ['renderers/gu/clay_renderer_gu.c']
     renderer_inc = include_directories('renderers/gu/')
+elif opt_renderer == 'pvr' and opt_platform == 'dc'
+    renderer_src = ['renderers/pvr/clay_renderer_pvr.c']
+    renderer_inc = include_directories('renderers/pvr/')
+
+    platform_src += ['platforms/dreamcast/pvr/clay_platform_dreamcast_pvr.c']
+    platform_inc += include_directories('platforms/dreamcast/pvr')
 else
-    error('No renderer chosen!')
+    error('No renderer chosen with compatible platform!')
 endif
 
 
@@ -94,7 +107,7 @@ src_files += [platform_src, renderer_src]
 
 inc = [ inc_base, platform_inc, renderer_inc ]
 src = [ src_files ]
-dep = [ m_dep, platform_dep, libintrafont_dep ]
+dep = [ m_dep, platform_dep ]
 
 arg_c = [ arg_base, arg_code ]
 
@@ -134,7 +147,7 @@ if opt_platform == 'dc'
   dc_binary = '1ST_READ.BIN'
   dc_cdi = 'clay.cdi'
 
-  target_to_pkg = exe_clayculator
+  target_to_pkg = exe_menu
 
   bin_script_path = join_paths(meson.current_source_dir(), 'pkg_dreamcast.sh')
   custom_target(dc_binary,

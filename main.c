@@ -16,9 +16,6 @@
     x = khash32((uint32_t)&x); \
   } while (0)
 
-// Clay
-#define CLAY_IMPLEMENTATION
-#include "clay.h"
 #include "clay_renderer.h"
 
 #if defined(PSP)
@@ -473,28 +470,34 @@ Clay_RenderCommandArray CreateLayout() {
             for (int col = 0; col < numGamesPerRow; col++) {
               Clay_BorderElementConfig border = {};
               if ((row * 3) + col == gameSelected) {
-                Clay_Border whiteOutline = {.width = 8,
-                                            .color = buttonColors[1]};
-                border =
-                    (Clay_BorderElementConfig){.bottom = whiteOutline,
-                                               .left = whiteOutline,
-                                               .right = whiteOutline,
-                                               .top = whiteOutline,
-                                               .cornerRadius = {8, 8, 8, 8}};
+                Clay_Border whiteOutline = {
+                    .width = 8,
+                    .color = buttonColors[1],
+                };
+                border = (Clay_BorderElementConfig){
+                    .bottom = whiteOutline,
+                    .left = whiteOutline,
+                    .right = whiteOutline,
+                    .top = whiteOutline,
+                    .cornerRadius = {8, 8, 8, 8},
+                };
               }
               CLAY(CLAY_IDI("GameIcon", (row * numGamesPerRow) + col),
-                   CLAY_LAYOUT({.sizing = gameIconSizing,
-                                .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
-                                                   .y = CLAY_ALIGN_Y_CENTER}}),
-                   CLAY_RECTANGLE(
-                       {.color =
-                            gameIconColors[((row * numGamesPerRow) + col) % 5],
-                        .cornerRadius = {16}}),
+                   CLAY_LAYOUT({
+                       .sizing = gameIconSizing,
+                       .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
+                                          .y = CLAY_ALIGN_Y_CENTER},
+                   }),
+                   CLAY_RECTANGLE({
+                       .color =
+                           gameIconColors[((row * numGamesPerRow) + col) % 5],
+                       .cornerRadius = {16},
+                   }),
                    CLAY_BORDER(border)) {
                 CLAY_TEXT(gameTextStrings[(row * numGamesPerRow) + col],
                           CLAY_TEXT_CONFIG({
                               .textColor = {0, 0, 0, 255},
-                              .fontId = 0,
+                              .fontId = 1,
                               .fontSize = 24,
                           }));
                 if (gameOptionOpen) {
@@ -585,7 +588,7 @@ void UpdateDrawFrame(void) {
 }
 
 void HandleClayErrors(Clay_ErrorData errorData) {
-  printf("%s", errorData.errorText.chars);
+  printf("%s\n", errorData.errorText.chars);
   if (errorData.errorType == CLAY_ERROR_TYPE_ELEMENTS_CAPACITY_EXCEEDED) {
     // Clay_SetMaxElementCount(Clay__maxElementCount * 2);
   } else if (errorData.errorType ==
@@ -595,6 +598,18 @@ void HandleClayErrors(Clay_ErrorData errorData) {
   }
 }
 
+// static struct Clay_Context claySmallContext = (struct Clay_Context){
+//     .maxElementCount = 4096,
+//     .maxMeasureTextCacheWordCount = 4096,
+//     .internalArena =
+//         {
+//             .capacity = SIZE_MAX,
+//             .memory = (char *)&fakeContext,
+//         },
+// };
+
+void fixClayLimits(void);
+
 int main(void) {
 #if defined(PLATFORM_PSP)
   const int screenWidth = 480;
@@ -603,12 +618,14 @@ int main(void) {
   const int screenWidth = 640;
   const int screenHeight = 480;
 #endif
+  fixClayLimits();
 
+  // Clay_SetCurrentContext(&claySmallContext);
   uint64_t totalMemorySize = Clay_MinMemorySize();
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
       totalMemorySize, malloc(totalMemorySize));
 
-  Clay_SetMeasureTextFunction(IntraFont_MeasureText);
+  Clay_SetMeasureTextFunction(Renderer_MeasureText);
   Clay_Initialize(clayMemory,
                   (Clay_Dimensions){(float)screenWidth, (float)screenHeight},
                   (Clay_ErrorHandler){HandleClayErrors});

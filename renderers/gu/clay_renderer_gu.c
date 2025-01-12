@@ -610,8 +610,8 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_End();
 }
 
-Clay_Dimensions IntraFont_MeasureText(Clay_String* text,
-                                      Clay_TextElementConfig* config) {
+Clay_Dimensions Renderer_MeasureText(Clay_String* text,
+                                     Clay_TextElementConfig* config) {
   // Measure string size for Font
   Clay_Dimensions textSize = {0};
 

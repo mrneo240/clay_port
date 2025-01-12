@@ -1,16 +1,13 @@
-#define CLAY_IMPLEMENTATION
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "clay.h"
+#include "clay_include.h"
 #include "clay_renderer.h"
 
 const uint32_t FONT_ID_BODY_24 = 0;
 const uint32_t FONT_ID_BODY_16 = 1;
-#define COLOR_ORANGE \
-  (Clay_Color) { 225, 138, 50, 255 }
-#define COLOR_BLUE \
-  (Clay_Color) { 111, 173, 162, 255 }
+#define COLOR_ORANGE (Clay_Color){225, 138, 50, 255}
+#define COLOR_BLUE (Clay_Color){111, 173, 162, 255}
 
 // Texture2D profilePicture;
 uint32_t profilePicture = 0;
@@ -725,7 +722,7 @@ int main(void) {
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
       totalMemorySize, malloc(totalMemorySize));
 
-  Clay_SetMeasureTextFunction(IntraFont_MeasureText);
+  Clay_SetMeasureTextFunction(Renderer_MeasureText);
   Clay_Initialize(clayMemory, (Clay_Dimensions){(float)1024, (float)768},
                   (Clay_ErrorHandler){HandleClayErrors});
   Clay_Renderer_Initialize(1024, 768, "Clay - Raylib Renderer Example");
