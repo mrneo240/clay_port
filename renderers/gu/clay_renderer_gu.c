@@ -12,70 +12,6 @@ static int _clay_screenWidth = 0;
 
 intraFont* font = NULL;
 
-typedef float clay_scalar_t;
-
-typedef struct {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-  uint8_t a;
-} Color;
-
-typedef struct {
-  int x;
-  int y;
-  int width;
-  int height;
-} Rectangle;
-
-typedef struct rgba_t {
-  uint8_t r, g, b, a;
-} clay_rgba_t;
-
-typedef struct {
-  clay_scalar_t x, y;
-} clay_vec2_t;
-
-typedef struct {
-  clay_scalar_t x, y, z;
-} clay_vec3_t;
-
-typedef struct {
-  int16_t x, y, z;
-} clay_vec3_16_t;
-
-typedef struct {
-  clay_vec2_t uv;
-  clay_rgba_t color;
-  clay_vec3_t pos;
-} clay_vertex_t __attribute__((packed));
-
-typedef struct {
-  clay_rgba_t color;
-  clay_vec3_t pos;
-} clay_color_vertex_t __attribute__((packed));
-
-typedef struct {
-  uint16_t color;
-  clay_vec3_16_t pos;
-} clay_color_vertex_16_t __attribute__((packed));
-
-typedef struct {
-  clay_vertex_t vertices[3];
-} clay_tris_t;
-
-typedef enum { CUSTOM_LAYOUT_ELEMENT_TYPE_NULL } CustomLayoutElementType;
-
-typedef struct {
-} CustomLayoutElement_Null;
-
-typedef struct {
-  CustomLayoutElementType type;
-  union {
-    CustomLayoutElement_Null null;
-  };
-} CustomLayoutElement;
-
 #define CLAY_RECTANGLE_TO_GU_RECTANGLE(rectangle)                 \
   (Rectangle) {                                                   \
     .x = rectangle.x, .y = rectangle.y, .width = rectangle.width, \
@@ -586,7 +522,8 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         break;
       }
       case CLAY_RENDER_COMMAND_TYPE_CUSTOM: {
-        CustomLayoutElement* customElement =
+#if 0
+          CustomLayoutElement* customElement =
             (CustomLayoutElement*)
                 renderCommand->config.customElementConfig->customData;
         if (!customElement) continue;
@@ -594,6 +531,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
           default:
             break;
         }
+#endif
 
         break;
       }
@@ -613,7 +551,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
 Clay_Dimensions Renderer_MeasureText(Clay_String* text,
                                      Clay_TextElementConfig* config) {
   // Measure string size for Font
-  Clay_Dimensions textSize = {0};
+  Clay_Dimensions textSize = (Clay_Dimensions){0};
 
   float fontSize = config->fontSize;
   float scaleSize = fontSize / 16.0f;

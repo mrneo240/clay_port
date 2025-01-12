@@ -55,7 +55,7 @@ elif opt_platform == 'psp'
   endif
   pspsdk_dep = declare_dependency(compile_args: [], link_args : pspsdk_link_args,
                                 include_directories : ['/usr/local/pspdev/psp/sdk/include'] )
-  platform_dep += [ pspsdk_dep ]
+  platform_dep += [ pspsdk_dep, libintrafont_dep ]
 
   opt_renderer = 'gu'
 

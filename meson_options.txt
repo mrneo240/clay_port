@@ -1,2 +1,2 @@
-#option('renderer', type : 'combo', choices : ['gl_legacy', 'gu'], value : 'gl_legacy')
+option('renderer', type : 'combo', choices : ['gl_legacy', 'gu', 'pvr'], value : 'gl_legacy')
 option('platform', type : 'combo', choices : ['glfw', 'psp', 'dc'], value : 'glfw')

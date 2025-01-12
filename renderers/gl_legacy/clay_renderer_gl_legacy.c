@@ -870,8 +870,7 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
 }
 
 Clay_Dimensions Renderer_MeasureText(Clay_String* text,
-                                      Clay_TextElementConfig* config) {
-#if 0
+                                     Clay_TextElementConfig* config) {
   // Measure string size for Font
   Clay_Dimensions textSize = {0};
   int currentFontId = sanitizeFontId(config->fontId);
@@ -886,8 +885,7 @@ Clay_Dimensions Renderer_MeasureText(Clay_String* text,
 
   textSize.width = dimen.width;
   textSize.height = dimen.height;
-#endif
-  Clay_Dimensions textSize = {.width = 4, .height = 8};
+
   return textSize;
 }
 

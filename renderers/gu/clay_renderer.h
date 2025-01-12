@@ -8,6 +8,7 @@
 #include <pspkernel.h>
 #include <stdbool.h>
 
+#include "clay_include.h"
 #include "clay_platform.h"
 
 #define FONT_INTRAFONT_LARGE (0)
