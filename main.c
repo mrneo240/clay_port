@@ -81,9 +81,13 @@ typedef struct {
 
 ui_state_ctx local_ui_ctx = {0};
 
+// padding is left right top bottom
+const Clay_Padding consistentPadding =
+    (Clay_Padding){.left = 16, .right = 16, .top = 8, .bottom = 8};
+
 void RenderHeaderButton(Clay_String text, bool active) {
   if (active) {
-    CLAY(CLAY_LAYOUT({.padding = {.x = 16, .y = 8}}),
+    CLAY(CLAY_LAYOUT({.padding = consistentPadding}),
          CLAY_RECTANGLE({.color = {180, 180, 180, 255}, .cornerRadius = 5})) {
       CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = 0,
                                         .fontSize = 16,
@@ -92,7 +96,7 @@ void RenderHeaderButton(Clay_String text, bool active) {
   }
 
   else {
-    CLAY(CLAY_LAYOUT({.padding = {.x = 16, .y = 8}}),
+    CLAY(CLAY_LAYOUT({.padding = consistentPadding}),
          CLAY_RECTANGLE({.color = {140, 140, 140, 255}, .cornerRadius = 5})) {
       CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = 0,
                                         .fontSize = 16,
@@ -108,13 +112,13 @@ Clay_Color buttonColors[] = {{255, 153, 153, 255} /* A: red */,
 
 void RenderGameOption(Clay_String text, bool active, Clay_Color color) {
   if (active) {
-    CLAY(CLAY_LAYOUT({.padding = {.x = 16, .y = 8}, .sizing = layoutExpand}),
+    CLAY(CLAY_LAYOUT({.padding = consistentPadding, .sizing = layoutExpand}),
          CLAY_BORDER({.bottom = {.color = color, .width = 2}})) {
       CLAY_TEXT(text, CLAY_TEXT_CONFIG(
                           {.fontId = 0, .fontSize = 20, .textColor = color}));
     }
   } else {
-    CLAY(CLAY_LAYOUT({.padding = {.x = 16, .y = 8}, .sizing = layoutExpand})) {
+    CLAY(CLAY_LAYOUT({.padding = consistentPadding, .sizing = layoutExpand})) {
       CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = 0,
                                         .fontSize = 20,
                                         .textColor = {255, 255, 255, 255}}));
@@ -625,10 +629,10 @@ int main(void) {
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
       totalMemorySize, malloc(totalMemorySize));
 
-  Clay_SetMeasureTextFunction(Renderer_MeasureText);
   Clay_Initialize(clayMemory,
                   (Clay_Dimensions){(float)screenWidth, (float)screenHeight},
                   (Clay_ErrorHandler){HandleClayErrors});
+  Clay_SetMeasureTextFunction(Renderer_MeasureText, 0);
   Clay_Renderer_Initialize(screenWidth, screenHeight,
                            "Clay - GLFW (Legacy) Renderer Example");
 

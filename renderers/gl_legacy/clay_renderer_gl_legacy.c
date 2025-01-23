@@ -869,8 +869,9 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_End();
 }
 
-Clay_Dimensions Renderer_MeasureText(Clay_String* text,
-                                     Clay_TextElementConfig* config) {
+Clay_Dimensions Renderer_MeasureText(Clay_StringSlice text,
+                                     Clay_TextElementConfig* config,
+                                     uintptr_t userData) {
   // Measure string size for Font
   Clay_Dimensions textSize = {0};
   int currentFontId = sanitizeFontId(config->fontId);
@@ -881,7 +882,7 @@ Clay_Dimensions Renderer_MeasureText(Clay_String* text,
   currentFont->size = scaleSize;
 
   textDimen dimen =
-      intraFontMeasureTextEx(currentFont, text->chars, text->length);
+      intraFontMeasureTextEx(currentFont, text.chars, text.length);
 
   textSize.width = dimen.width;
   textSize.height = dimen.height;

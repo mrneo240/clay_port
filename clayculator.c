@@ -263,7 +263,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
          CLAY_LAYOUT((Clay_LayoutConfig){
              .layoutDirection = CLAY_TOP_TO_BOTTOM,
              .sizing = layoutExpand,
-             .padding = {padding, padding},
+             .padding = CLAY_PADDING_ALL(padding),
              .childGap = padding,
          })) {
       CLAY(CLAY_ID("HeaderContainer"),
@@ -273,7 +273,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                .sizing = {.height = CLAY_SIZING_FIXED(60),
                           .width = CLAY_SIZING_GROW()},
-               .padding = {padding, padding},
+               .padding = CLAY_PADDING_ALL(padding),
                .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}})) {
         CLAY_TEXT(CLAY_STRING("Clayculator"),
                   CLAY_TEXT_CONFIG({
@@ -289,7 +289,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                .sizing = {.height = CLAY_SIZING_FIXED(100),
                           .width = CLAY_SIZING_GROW()},
-               .padding = {padding, padding},
+               .padding = CLAY_PADDING_ALL(padding),
                .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}})) {
         Clay_String displayCS =
             (Clay_String){.chars = display, .length = strlen(display)};
@@ -306,7 +306,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                .layoutDirection = CLAY_LEFT_TO_RIGHT,
                .sizing = (Clay_Sizing){.width = CLAY_SIZING_GROW(),
                                        .height = CLAY_SIZING_GROW()},
-               .padding = {padding, padding},
+               .padding = CLAY_PADDING_ALL(padding),
                .childGap = padding,
            })) {
         CLAY(CLAY_ID("LeftPillar"),
@@ -338,7 +338,8 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                 CLAY(CLAY_IDI("CalcButton", buttonIndex),
                      CLAY_LAYOUT((Clay_LayoutConfig){
                          .sizing = layoutExpand,
-                         .padding = {24, 12},
+                         .padding =
+                             {.left = 24, .right = 24, .top = 12, .bottom = 12},
                          .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
                                             .y = CLAY_ALIGN_Y_CENTER}}),
                      CLAY_RECTANGLE((Clay_RectangleElementConfig){
@@ -415,7 +416,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
          CLAY_LAYOUT((Clay_LayoutConfig){
              .sizing = layoutExpand,
              .layoutDirection = CLAY_TOP_TO_BOTTOM,
-             .padding = {padding, padding},
+             .padding = CLAY_PADDING_ALL(padding),
              .childGap = padding,
          })) {
       CLAY(CLAY_ID("HeaderContainer"),
@@ -425,7 +426,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                .sizing = {.height = CLAY_SIZING_FIXED(60),
                           .width = CLAY_SIZING_GROW()},
-               .padding = {padding, padding},
+               .padding = CLAY_PADDING_ALL(padding),
                .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}})) {
         CLAY_TEXT(CLAY_STRING("Clayculator"),
                   CLAY_TEXT_CONFIG({
@@ -441,7 +442,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                .sizing = {.height = CLAY_SIZING_FIXED(100),
                           .width = CLAY_SIZING_GROW()},
-               .padding = {padding, padding},
+               .padding = CLAY_PADDING_ALL(padding),
                .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}})) {
         Clay_String displayCS =
             (Clay_String){.chars = display, .length = strlen(display)};
@@ -457,7 +458,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
          CLAY_RECTANGLE((Clay_RectangleElementConfig){.color = COLOURS[0]}),
          CLAY_LAYOUT((Clay_LayoutConfig){
              .layoutDirection = CLAY_TOP_TO_BOTTOM,
-             .padding = {padding, padding},
+             .padding = CLAY_PADDING_ALL(padding),
              .childGap = padding,
          })) {
       CLAY(
@@ -484,7 +485,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
               CLAY(CLAY_IDI("CalcButton", buttonIndex),
                    CLAY_LAYOUT((Clay_LayoutConfig){
                        .sizing = layoutExpand,
-                       .padding = {padding + 4, padding + 4},
+                       .padding = CLAY_PADDING_ALL(padding + 4),
                        .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
                                           .y = CLAY_ALIGN_Y_CENTER}}),
                    CLAY_RECTANGLE((Clay_RectangleElementConfig){
@@ -604,10 +605,10 @@ int main(void) {
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
       totalMemorySize, malloc(totalMemorySize));
 
-  Clay_SetMeasureTextFunction(Renderer_MeasureText);
   Clay_Initialize(clayMemory,
                   (Clay_Dimensions){(float)screenWidth, (float)screenHeight},
                   (Clay_ErrorHandler){HandleClayErrors});
+  Clay_SetMeasureTextFunction(Renderer_MeasureText, 0);
   Clay_Renderer_Initialize(screenWidth, screenHeight, "Clayculator");
 
   //--------------------------------------------------------------------------------------

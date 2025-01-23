@@ -722,9 +722,9 @@ int main(void) {
   Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(
       totalMemorySize, malloc(totalMemorySize));
 
-  Clay_SetMeasureTextFunction(Renderer_MeasureText);
   Clay_Initialize(clayMemory, (Clay_Dimensions){(float)1024, (float)768},
                   (Clay_ErrorHandler){HandleClayErrors});
+  Clay_SetMeasureTextFunction(Renderer_MeasureText, 0);
   Clay_Renderer_Initialize(1024, 768, "Clay - Raylib Renderer Example");
   /*profilePicture =
       LoadTextureFromImage(LoadImage("resources/profile-picture.png"));
