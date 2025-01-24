@@ -68,8 +68,8 @@ typedef struct {
   ButtonRow *rows;
 } ButtonGrid;
 
-float num1 = 0;
-float num2 = 0;
+float num1 = 0.f;
+float num2 = 0.f;
 bool result = false;
 char display[100] = "0";
 bool hasPoint = false;
@@ -115,7 +115,7 @@ static Clay_PointerData EmulatePointerData(void) {
 
 void HandleNumberButtonInteraction(intptr_t id) {
   char tmp[10];
-  snprintf(tmp, 10, "%d", id);
+  snprintf(tmp, 10, "%ld", id);
 
   if (strlen(display) < 9) {
     if (strcmp(display, "0") == 0) {
@@ -267,8 +267,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
              .childGap = padding,
          })) {
       CLAY(CLAY_ID("HeaderContainer"),
-           CLAY_RECTANGLE((Clay_RectangleElementConfig){.color = COLOURS[3],
-                                                        .cornerRadius = 16}),
+           CLAY_RECTANGLE({.color = COLOURS[3], .cornerRadius = 16}),
            CLAY_LAYOUT((Clay_LayoutConfig){
                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                .sizing = {.height = CLAY_SIZING_FIXED(60),
@@ -283,8 +282,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                   }));
       }
       CLAY(CLAY_ID("CalcResultContainer"),
-           CLAY_RECTANGLE((Clay_RectangleElementConfig){.color = COLOURS[2],
-                                                        .cornerRadius = 16}),
+           CLAY_RECTANGLE({.color = COLOURS[2], .cornerRadius = 16}),
            CLAY_LAYOUT((Clay_LayoutConfig){
                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                .sizing = {.height = CLAY_SIZING_FIXED(100),
@@ -300,8 +298,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                                  .textColor = COLOURS[4],
                              }));
       }
-      CLAY(CLAY_ID("InnerContent"),
-           CLAY_RECTANGLE((Clay_RectangleElementConfig){.color = COLOURS[0]}),
+      CLAY(CLAY_ID("InnerContent"), CLAY_RECTANGLE({.color = COLOURS[0]}),
            CLAY_LAYOUT((Clay_LayoutConfig){
                .layoutDirection = CLAY_LEFT_TO_RIGHT,
                .sizing = (Clay_Sizing){.width = CLAY_SIZING_GROW(),
@@ -342,7 +339,7 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
                              {.left = 24, .right = 24, .top = 12, .bottom = 12},
                          .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
                                             .y = CLAY_ALIGN_Y_CENTER}}),
-                     CLAY_RECTANGLE((Clay_RectangleElementConfig){
+                     CLAY_RECTANGLE({
                          .color = c,
                          .cornerRadius = 16,
                      }),
@@ -356,9 +353,8 @@ Clay_RenderCommandArray CreateLayout(ButtonGrid *grid) {
             }
           }
         }
-        CLAY(CLAY_ID("RightPillar"),
-             CLAY_RECTANGLE((Clay_RectangleElementConfig){.color = COLOURS[0]}),
-             CLAY_LAYOUT((Clay_LayoutConfig){
+        CLAY(CLAY_ID("RightPillar"), CLAY_RECTANGLE({.color = COLOURS[0]}),
+             CLAY_LAYOUT({
                  .sizing = (Clay_Sizing){.width = CLAY_SIZING_PERCENT(0.2f)},
              })) {}
       }
@@ -488,7 +484,7 @@ Clay_RenderCommandArray CreateLayoutPSP(ButtonGrid *grid) {
                        .padding = CLAY_PADDING_ALL(padding + 4),
                        .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
                                           .y = CLAY_ALIGN_Y_CENTER}}),
-                   CLAY_RECTANGLE((Clay_RectangleElementConfig){
+                   CLAY_RECTANGLE({
                        .color = c,
                        .cornerRadius = 16,
                    }),

@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 #include "input.h"
+#include "dc_renderer_includes.h"
 
 void Clay_Platform_Initialize(int width, int height, const char* title);
 

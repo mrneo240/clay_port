@@ -7,7 +7,7 @@
 #define ZROA_NO_SHORT_NAMES
 #include "libzro/libzro.h"
 #define BHASH_IMPLEMENTATION
-#define BHASH_REALLOC(ptr, size, ctx) _zroa_arena_realloc(ptr, size, size, ctx)
+#define BHASH_REALLOC(pltr, size, ctx) _zroa_arena_realloc(ptr, size, size, ctx)
 #include "bullno1/bhash.h"
 #include "k-hash/khash.h"
 
@@ -26,6 +26,12 @@
 
 Clay_Sizing gameIconSizing = {.height = CLAY_SIZING_FIXED(iconSize),
                               .width = CLAY_SIZING_FIXED(iconSize)};
+
+static const int numGames = 24;
+static const int numGamesPerRow = 3;
+// Clay_Sizing gameIconSizing = {
+//     .height = CLAY_SIZING_FIXED(iconSize),
+//     .width = CLAY_SIZING_PERCENT(1.f / numGamesPerRow)};
 
 Clay_RectangleElementConfig contentBackgroundConfig = {
     .color = {90, 90, 90, 255}, .cornerRadius = {8}};
@@ -52,8 +58,6 @@ static const Clay_Sizing layoutExpand = {.height = CLAY_SIZING_GROW(),
                                          .width = CLAY_SIZING_GROW()};
 #endif
 
-static const int numGames = 12;
-static const int numGamesPerRow = 3;
 char **gameText;
 Clay_String *gameTextStrings;
 
@@ -241,6 +245,13 @@ static void SwapUIBuffers(void) {
   bhash_clear(local_ui_ctx.current_state_buffer);
 }
 
+struct Clay_TextElementConfig textCfg = {
+    .textColor = (Clay_Color){255.f, 255.f, 255.f, 255.f},
+    .fontId = 0,
+    .fontSize = 20,
+    .letterSpacing = 0,
+    .lineHeight = 0};
+
 Clay_RenderCommandArray CreateLayout() {
   SwapUIBuffers();
 
@@ -296,10 +307,10 @@ Clay_RenderCommandArray CreateLayout() {
     static int inputLockoutFrames = 0;
     if (INPT_DPAD() && inputLockoutFrames < 0) {
       if (INPT_DPADDirection(DPAD_DOWN)) {
-        gameSelected += 3;
+        gameSelected += numGamesPerRow;
       }
       if (INPT_DPADDirection(DPAD_UP)) {
-        gameSelected -= 3;
+        gameSelected -= numGamesPerRow;
       }
       if (INPT_DPADDirection(DPAD_LEFT)) {
         gameSelected--;
@@ -448,7 +459,7 @@ Clay_RenderCommandArray CreateLayout() {
                    {.color = {120, 120, 120, 255}, .cornerRadius = {8}})) {
             CLAY_TEXT(cs[i],
                       CLAY_TEXT_CONFIG({.fontId = 0,
-                                        .fontSize = 20,
+                                        .fontSize = 32,
                                         .textColor = {255, 255, 255, 255}}));
           }
         }
@@ -473,7 +484,7 @@ Clay_RenderCommandArray CreateLayout() {
                                                .y = CLAY_ALIGN_Y_CENTER}})) {
             for (int col = 0; col < numGamesPerRow; col++) {
               Clay_BorderElementConfig border = {};
-              if ((row * 3) + col == gameSelected) {
+              if ((row * numGamesPerRow) + col == gameSelected) {
                 Clay_Border whiteOutline = {
                     .width = 8,
                     .color = buttonColors[1],
@@ -506,7 +517,7 @@ Clay_RenderCommandArray CreateLayout() {
                           }));
                 if (gameOptionOpen) {
                 }
-                if ((row * 3) + col == gameSelected) {
+                if ((row * numGamesPerRow) + col == gameSelected) {
                   if (gameOptionOpen) {
                     RenderGameOptionMenu(gameSelected, row, col);
                   }

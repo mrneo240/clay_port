@@ -7,11 +7,12 @@
 #include "clay_platform.h"
 #include "clay_renderer.h"
 #include "clay_types.h"
+#include "font_prototypes.h"
+#include "simple_texture_allocator.h"
 
 #define SOFTWARE_SCISSORING (1)
 
 static pvr_poly_hdr_t hdr;
-static pvr_dr_state_t dr_state;
 
 static int _clay_screenHeight = 0;
 static int _clay_screenWidth = 0;
@@ -37,7 +38,7 @@ static int _clay_screenWidth = 0;
 #define GREEN (0xFF00FF00)
 #define BLUE (0xFF0000FF)
 
-void* fonts[2] = {{0}};
+void* fonts[2] = {0, 0};
 
 static int sanitizeFontId(int fontId) {
   if (fontId < 0) {
@@ -342,19 +343,19 @@ static void DrawRoundedRect(int x, int y, int width, int height,
       vertices[vertexIndex++] = (clay_vertex_t){
           .pos = {.x = centerX + radius * cos(radians),
                   .y = centerY + radius * sin(radians),
-                  .z = 0},
+                  .z = z},
           .uv = {.x = 0, .y = 0},
           .color = color,
       };
       vertices[vertexIndex++] = (clay_vertex_t){
           .pos = {.x = centerX + radius * cos(radiansNext),
                   .y = centerY + radius * sin(radiansNext),
-                  .z = 0},
+                  .z = z},
           .uv = {.x = 0, .y = 0},
           .color = color,
       };
       vertices[vertexIndex++] = (clay_vertex_t){
-          .pos = {.x = centerX, .y = centerY, .z = 0},
+          .pos = {.x = centerX, .y = centerY, .z = z},
           .uv = {.x = 0, .y = 0},
           .color = color,
       };
@@ -364,109 +365,109 @@ static void DrawRoundedRect(int x, int y, int width, int height,
   // Rectangles
   // top
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[0].x, .y = point[0].y, .z = 0},
+      .pos = {.x = point[0].x, .y = point[0].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[1].x, .y = point[1].y, .z = 0},
+      .pos = {.x = point[1].x, .y = point[1].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[8].x, .y = point[8].y, .z = 0},
+      .pos = {.x = point[8].x, .y = point[8].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[8].x, .y = point[8].y, .z = 0},
+      .pos = {.x = point[8].x, .y = point[8].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[1].x, .y = point[1].y, .z = 0},
+      .pos = {.x = point[1].x, .y = point[1].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[9].x, .y = point[9].y, .z = 0},
+      .pos = {.x = point[9].x, .y = point[9].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
   // middle
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[7].x, .y = point[7].y, .z = 0},
+      .pos = {.x = point[7].x, .y = point[7].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[2].x, .y = point[2].y, .z = 0},
+      .pos = {.x = point[2].x, .y = point[2].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[6].x, .y = point[6].y, .z = 0},
+      .pos = {.x = point[6].x, .y = point[6].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[6].x, .y = point[6].y, .z = 0},
+      .pos = {.x = point[6].x, .y = point[6].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[2].x, .y = point[2].y, .z = 0},
+      .pos = {.x = point[2].x, .y = point[2].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[3].x, .y = point[3].y, .z = 0},
+      .pos = {.x = point[3].x, .y = point[3].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
   // bottom
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[11].x, .y = point[11].y, .z = 0},
+      .pos = {.x = point[11].x, .y = point[11].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[10].x, .y = point[10].y, .z = 0},
+      .pos = {.x = point[10].x, .y = point[10].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[5].x, .y = point[5].y, .z = 0},
+      .pos = {.x = point[5].x, .y = point[5].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[5].x, .y = point[5].y, .z = 0},
+      .pos = {.x = point[5].x, .y = point[5].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[10].x, .y = point[10].y, .z = 0},
+      .pos = {.x = point[10].x, .y = point[10].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
 
   vertices[vertexIndex++] = (clay_vertex_t){
-      .pos = {.x = point[4].x, .y = point[4].y, .z = 0},
+      .pos = {.x = point[4].x, .y = point[4].y, .z = z},
       .uv = {.x = 0, .y = 0},
       .color = color,
   };
@@ -538,19 +539,19 @@ static void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
     vertices[vertexIndex++] = (clay_vertex_t){
         .pos = {.x = centerX + radius * cos(radians),
                 .y = centerY + radius * sin(radians),
-                .z = 0},
+                .z = z},
         .uv = {.x = 0, .y = 0},
         .color = color,
     };
     vertices[vertexIndex++] = (clay_vertex_t){
         .pos = {.x = centerX + radius * cos(radiansNext),
                 .y = centerY + radius * sin(radiansNext),
-                .z = 0},
+                .z = z},
         .uv = {.x = 0, .y = 0},
         .color = color,
     };
     vertices[vertexIndex++] = (clay_vertex_t){
-        .pos = {.x = centerX, .y = centerY, .z = 0},
+        .pos = {.x = centerX, .y = centerY, .z = z},
         .uv = {.x = 0, .y = 0},
         .color = color,
     };
@@ -585,6 +586,8 @@ static void DrawRing(Clay_Vector2 center, float innerRadius, float outerRadius,
   }
 }
 
+static intptr_t pvr_scratch_buf;
+
 void Clay_Renderer_Initialize(int width, int height, const char* title) {
   if (width > 640) {
     width = 640;
@@ -595,21 +598,21 @@ void Clay_Renderer_Initialize(int width, int height, const char* title) {
 
   Clay_Platform_Initialize(width, height, title);
 
-  // intraFontInit();
-  /* Dreamcast recommended to use INTRAFONT_CACHE_ASCII as an option but not
-   * required */
+  pvr_scratch_buf = (intptr_t)pvr_mem_malloc(TEXMAN_BUFFER_SIZE);
+  texman_reset(pvr_scratch_buf, TEXMAN_BUFFER_SIZE);
+  texman_clear();
 
-  // font = intraFontLoad("ltn8.pgf", INTRAFONT_CACHE_ASCII);
-  // if (!font) {
-  //   return;
-  // }
-  // intraFontSetStyle(font, 1.f, BLACK, CLEAR, 0.f, INTRAFONT_ALIGN_LEFT);
+  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", 0);
+
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n",
+         texman_get_space_available() / 1024, (1024 * 1024) / 1024,
+         texman_get_space_available(), (1024 * 1024));
 
   _clay_screenWidth = width;
   _clay_screenHeight = height;
 
   pvr_poly_cxt_t cxt;
-  pvr_poly_cxt_col(&cxt, PVR_LIST_OP_POLY);
+  pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
   cxt.gen.shading = PVR_SHADE_GOURAUD;  // PVR_SHADE_FLAT
   pvr_poly_compile(&hdr, &cxt);
 }
@@ -628,7 +631,9 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_Start();
 
   pvr_scene_begin();
-  pvr_list_begin(PVR_LIST_OP_POLY);
+  // pvr_list_begin(PVR_LIST_OP_POLY);
+  //  pvr_list_finish();
+  pvr_list_begin(PVR_LIST_TR_POLY);
 
   bool isScissorActive = false;
   z = 1;
@@ -647,12 +652,10 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         //   Raylib_fonts[renderCommand->config.textElementConfig->fontId].font;
 
         float fontSize = renderCommand->config.textElementConfig->fontSize;
-        float scaleSize = fontSize / 16.0f;
-
-        const float adjustX = 4.f;
-        const float adjustY = renderCommand->boundingBox.height;  // 12.f;
-        int currentFontId =
-            sanitizeFontId(renderCommand->config.textElementConfig->fontId);
+        // const float adjustX = 4.f;
+        // const float adjustY = renderCommand->boundingBox.height;  // 12.f;
+        // int currentFontId =
+        //    sanitizeFontId(renderCommand->config.textElementConfig->fontId);
         // intraFont* currentFont = fonts[currentFontId];
 
 #if defined(SOFTWARE_SCISSORING)
@@ -668,20 +671,11 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
         uint32_t fontColor = 0;
         memcpy(&fontColor, &colorStruct, sizeof(uint32_t));
 
-        // glDepthFunc(GL_LESS);      // The Type Of Depth Test To Do
-        // glDisable(GL_DEPTH_TEST);  // Enables Depth Testing
-
-        // glEnable(GL_CULL_FACE);
-        // glFrontFace(GL_CW);
-        // glCullFace(GL_BACK);
-        // glDisable(GL_BLEND);
-        // glEnable(GL_TEXTURE_2D);
-
-        // intraFontSetStyle(currentFont, scaleSize, fontColor, CLEAR, 0.f,
-        //                   INTRAFONT_ALIGN_LEFT);
-
-        // intraFontPrintEx(currentFont, boundingBox.x + adjustX,
-        //                  boundingBox.y + adjustY, text.chars, text.length);
+        font_bmf_begin_draw();
+        font_bmf_set_height(fontSize);
+        z_set(z);
+        font_bmf_draw_slice(boundingBox.x, boundingBox.y, fontColor, text.chars,
+                            text.length);
 
 #if !defined(SOFTWARE_SCISSORING)
         if (scissor_enabled) {
@@ -857,26 +851,24 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_End();
 }
 
-Clay_Dimensions Renderer_MeasureText(Clay_String* text,
-                                     Clay_TextElementConfig* config) {
+Clay_Dimensions Renderer_MeasureText(Clay_StringSlice text,
+                                     Clay_TextElementConfig* config,
+                                     uintptr_t userData) {
+  Clay_Dimensions textSize = {0};
   // Measure string size for Font
-  Clay_Dimensions textSize = {.width = 4, .height = 8};
 
-  // float fontSize = config->fontSize;
-  // float scaleSize = fontSize / 16.0f;
-  // font->size = scaleSize;
+  font_bmf_set_height((float)config->fontSize);
+  float width = font_bmf_calculate_length_slice(text.chars, text.length);
+  float height = font_bmf_get_current_height();
 
-  // textDimen dimen = intraFontMeasureTextEx(font, text->chars, text->length);
-
-  // textSize.width = dimen.width;
-  // textSize.height = dimen.height;
+  textSize.width = width;
+  textSize.height = height;
   return textSize;
 }
 
 void Clay_Platform_Shutdown();
 void Clay_Renderer_Shutdown() {
-  // intraFontUnload(font);
-  // intraFontShutdown();
+  font_bmf_destroy();
 
   Clay_Platform_Shutdown();
 }

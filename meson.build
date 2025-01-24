@@ -3,14 +3,13 @@ project('opengl_legacy_example', 'c',
   default_options : ['c_std=gnu11','b_staticpic=false'])
 
 # Compiler arguments
-arg_base = ['-w']
+arg_base = ['-Wall', '-Wno-missing-braces', '-Werror=implicit-function-declaration', ]
 arg_code = []
 arg_linker = []
 
 # Dependencies
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
-libintrafont_dep = dependency('libintrafont', fallback : ['libintrafont', 'libintrafont_dep'])
 
 # Options
 opt_renderer = get_option('renderer')
@@ -36,7 +35,7 @@ if opt_platform == 'glfw'
   glfw_dep = dependency('glfw3', fallback : ['glfw3', 'glfw3_dep'])
   glad_dep = dependency('glad', fallback : ['glad', 'glad_dep'])
   #cglm_dep = dependency('cglm', fallback : ['cglm', 'cglm_dep'])
-  platform_dep += [glfw_dep , glad_dep, libintrafont_dep]
+  platform_dep += [glfw_dep , glad_dep]
 
   platform_src += ['platforms/glfw/clay_platform_glfw.c']
   platform_inc += include_directories('platforms/glfw/')
@@ -55,7 +54,7 @@ elif opt_platform == 'psp'
   endif
   pspsdk_dep = declare_dependency(compile_args: [], link_args : pspsdk_link_args,
                                 include_directories : ['/usr/local/pspdev/psp/sdk/include'] )
-  platform_dep += [ pspsdk_dep, libintrafont_dep ]
+  platform_dep += [ pspsdk_dep ]
 
   opt_renderer = 'gu'
 
@@ -65,7 +64,7 @@ elif opt_platform == 'psp'
 elif opt_platform == 'dc'
   arg_code += ['-DPLATFORM_DC', '-DNDEBUG']
   arg_code += ['-DPATH_ASSETS="/cd/"', '-DPATH_USERDATA="/pc/"']
-  arg_base += ['-mpretend-cmove','-fsingle-precision-constant', '-ffast-math', '-O2', '-g0',
+  arg_base += ['-mpretend-cmove','-fsingle-precision-constant',
                  '-fomit-frame-pointer', '-finline-functions',  '-mfsrra', '-mfsca']
 
   dc_debug_dep = declare_dependency(compile_args: [], link_args :  ['-g3', '-Wl,-Map=output.map'])
@@ -78,11 +77,14 @@ endif
 if opt_renderer == 'gl_legacy'
     renderer_src = ['renderers/gl_legacy/clay_renderer_gl_legacy.c']
     renderer_inc = include_directories('renderers/gl_legacy/')
+
+    libintrafont_dep = dependency('libintrafont', fallback : ['libintrafont', 'libintrafont_dep'])
+    platform_dep += [libintrafont_dep]
+
     if opt_platform == 'glfw'
     elif opt_platform == 'dc'
-      error('Bad GLdc!')
       libgldc_dep = dependency('gldc', fallback : ['gldc', 'libgldc_dep'])
-      platform_dep += [libgldc_dep, libintrafont_dep]
+      platform_dep += [ libgldc_dep ]
 
       platform_src += ['platforms/dreamcast/gldc/clay_platform_dreamcast_gldc.c']
       platform_inc += include_directories('platforms/dreamcast/gldc')
@@ -92,8 +94,13 @@ if opt_renderer == 'gl_legacy'
 elif opt_renderer == 'gu' and opt_platform == 'psp'
     renderer_src = ['renderers/gu/clay_renderer_gu.c']
     renderer_inc = include_directories('renderers/gu/')
+
+    libintrafont_dep = dependency('libintrafont', fallback : ['libintrafont', 'libintrafont_dep'])
+    platform_dep = [ libintrafont_dep ]
+
 elif opt_renderer == 'pvr' and opt_platform == 'dc'
-    renderer_src = ['renderers/pvr/clay_renderer_pvr.c']
+    renderer_src = [ 'renderers/pvr/clay_renderer_pvr.c', 'renderers/pvr/simple_texture_allocator.c', 'renderers/pvr/font_bmf.c',
+      'renderers/pvr/pvr_texture.c', 'renderers/pvr/draw_pvr.c' ]
     renderer_inc = include_directories('renderers/pvr/')
 
     platform_src += ['platforms/dreamcast/pvr/clay_platform_dreamcast_pvr.c']
@@ -101,7 +108,6 @@ elif opt_renderer == 'pvr' and opt_platform == 'dc'
 else
     error('No renderer chosen with compatible platform!')
 endif
-
 
 src_files += [platform_src, renderer_src]
 
@@ -144,6 +150,9 @@ copy = fs.copyfile('resources/ltn8.pgf', 'ltn8.pgf')
 # Post processing
 # Dreamcast
 if opt_platform == 'dc'
+
+  copy = fs.copyfile('resources/icon_black.pvr', 'icon_black.pvr')
+
   dc_binary = '1ST_READ.BIN'
   dc_cdi = 'clay.cdi'
 
@@ -169,7 +178,7 @@ if opt_platform == 'dc'
 elif opt_platform == 'psp'
   psp_binary = 'EBOOT.PBP'
 
-  target_to_pkg = exe_clayculator
+  target_to_pkg = exe_menu
   copy = fs.copyfile('resources/ICON0.png', 'ICON0.png')
 
   script_path = join_paths(meson.current_source_dir(), 'pkg_psp.sh')

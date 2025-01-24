@@ -110,7 +110,7 @@ uint8_t INPT_TriggerValue(TRIGGER trigger);
 #define STRING_Y_BTN "\x095"
 #define STRING_START_BTN "\x090"
 #endif
-#ifdef defined(PLATFORM_PSP)
+#if defined(PLATFORM_PSP)
 #define STRING_A_BTN "\x096"
 #define STRING_B_BTN "\x097"
 #define STRING_X_BTN "\x098"

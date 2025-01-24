@@ -20,7 +20,8 @@ void Clay_Renderer_Shutdown();
 
 void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands);
 
-Clay_Dimensions Renderer_MeasureText(Clay_String* text,
-                                     Clay_TextElementConfig* config);
+Clay_Dimensions Renderer_MeasureText(Clay_StringSlice text,
+                                     Clay_TextElementConfig* config,
+                                     uintptr_t userData);
 
 #endif  // CLAY_RENDERER_GU_H

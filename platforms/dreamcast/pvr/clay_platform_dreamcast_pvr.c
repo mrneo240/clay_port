@@ -6,7 +6,7 @@
 
 #include "dc_renderer_includes.h"
 
-pvr_init_params_t pvr_params = (pvr_init_params_t){
+pvr_init_params_t pvr_params = {
     .opb_sizes = {PVR_BINSIZE_16, PVR_BINSIZE_0, PVR_BINSIZE_16, PVR_BINSIZE_0,
                   PVR_BINSIZE_0},
     1024 * 1024};

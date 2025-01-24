@@ -548,16 +548,23 @@ void Clay_Renderer_Render(Clay_RenderCommandArray renderCommands) {
   Clay_Platform_Render_End();
 }
 
-Clay_Dimensions Renderer_MeasureText(Clay_String* text,
-                                     Clay_TextElementConfig* config) {
+Clay_Dimensions Renderer_MeasureText(Clay_StringSlice text,
+                                     Clay_TextElementConfig* config,
+                                     uintptr_t userData) {
   // Measure string size for Font
   Clay_Dimensions textSize = (Clay_Dimensions){0};
 
   float fontSize = config->fontSize;
-  float scaleSize = fontSize / 16.0f;
+  float fontBaseSize = 0.f;
+  if (config->fontId == 0) {
+    fontBaseSize = 24.f;
+  } else {
+    fontBaseSize = 16.f;
+  }
+  float scaleSize = fontSize / fontBaseSize;
   font->size = scaleSize;
 
-  textDimen dimen = intraFontMeasureTextEx(font, text->chars, text->length);
+  textDimen dimen = intraFontMeasureTextEx(font, text.chars, text.length);
 
   textSize.width = dimen.width;
   textSize.height = dimen.height;

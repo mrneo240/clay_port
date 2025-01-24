@@ -37,17 +37,17 @@ typedef struct {
   clay_vec2_t uv;
   clay_rgba_t color;
   clay_vec3_t pos;
-} clay_vertex_t __attribute__((packed));
+} __attribute__((packed)) clay_vertex_t ;
 
 typedef struct {
   clay_rgba_t color;
   clay_vec3_t pos;
-} clay_color_vertex_t __attribute__((packed));
+} __attribute__((packed)) clay_color_vertex_t;
 
 typedef struct {
   uint16_t color;
   clay_vec3_16_t pos;
-} clay_color_vertex_16_t __attribute__((packed));
+} __attribute__((packed)) clay_color_vertex_16_t ;
 
 typedef struct {
   clay_vertex_t vertices[3];
