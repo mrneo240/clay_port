@@ -11,10 +11,10 @@ Port of Clay to interesting platforms
   
 - Dreamcast: 
   - Windowing: KallistiOS
-  - Rendering: GLdc (OpenGL 1.2)
-  - Text: libintrafont
+  - Rendering: GLdc (OpenGL 1.2) or Native PVR
+  - Text: libintrafont or BMFont
     
-- Desktops: 
+- PSP: 
   - Windowing: PSP OS (plain)
   - Rendering: Sony GU
   - Text: libintrafont
@@ -38,6 +38,20 @@ meson compile -C builddir
 ```
 
 Dreamcast:
+
+choose your renderer by adding 
+```
+-Drenderer=gl_legacy
+``` 
+
+OR 
+
+```
+-Drenderer=pvr
+```
+
+To the below meson setup command
+
 ```bash
 meson setup --cross-file sh4-dreamcast-kos -Dplatform=dc builddir_dreamcast
 meson compile -C builddir_dreamcast
@@ -45,7 +59,7 @@ meson compile -C builddir_dreamcast
 
 Psp:
 ```bash
-meson setup --cross-file mips-allegrex-ps -Dplatform=psp builddir_psp
+meson setup --cross-file mips-allegrex-ps -Dplatform=psp -Drenderer=gu builddir_psp
 meson compile -C builddir_psp
 ```
 
